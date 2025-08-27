@@ -59,8 +59,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installUpdate: () => ipcRenderer.invoke('install-update'),
   getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
   
-  // Update event listener
-  onUpdateStatus: (callback) => ipcRenderer.on('update-status', callback),
-  removeUpdateStatusListener: () => ipcRenderer.removeAllListeners('update-status')
+                // Update event listener
+              onUpdateStatus: (callback) => ipcRenderer.on('update-status', callback),
+              removeUpdateStatusListener: () => ipcRenderer.removeAllListeners('update-status'),
+              
+              // Get app version
+              getAppVersion: () => ipcRenderer.invoke('get-app-version')
 });
 

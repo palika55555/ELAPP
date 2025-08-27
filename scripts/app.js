@@ -59,6 +59,9 @@ class InventoryApp {
             // Setup update listeners
             this.setupUpdateListeners();
             
+            // Load app version
+            this.loadAppVersion();
+            
             console.log('App initialization completed successfully');
         } catch (error) {
             console.error('Error during app initialization:', error);
@@ -4164,6 +4167,24 @@ class InventoryApp {
         } catch (error) {
             console.error('Error installing update:', error);
             this.showNotification('Chyba pri inštalácii aktualizácie', 'error');
+        }
+    }
+
+    async loadAppVersion() {
+        try {
+            if (window.electronAPI && window.electronAPI.getAppVersion) {
+                const version = await window.electronAPI.getAppVersion();
+                const versionElement = document.getElementById('current-version');
+                if (versionElement) {
+                    versionElement.textContent = version;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading app version:', error);
+            const versionElement = document.getElementById('current-version');
+            if (versionElement) {
+                versionElement.textContent = 'Chyba';
+            }
         }
     }
 }

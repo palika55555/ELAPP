@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-app",
-  "version": "1.0.6",
+  "version": "1.1.1",
   "description": "Desktop inventory management application built with Electron",
   "main": "main.js",
   "scripts": {
@@ -30,6 +30,8 @@
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^12.2.0",
     "electron-updater": "^6.6.2",
+    "fs-extra": "^11.3.1",
+    "universalify": "^2.0.1",
     "uuid": "^9.0.1"
   },
   "build": {
@@ -40,7 +42,6 @@
     },
           "files": [
         "**/*",
-        "!node_modules/**/*",
         "!dist/**/*"
       ],
     "publish": {
@@ -53,6 +54,7 @@
       "target": "nsis",
       "icon": "assets/icon.ico"
     },
+    "asar": false,
     "mac": {
       "target": "dmg",
       "icon": "assets/icon.icns"

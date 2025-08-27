@@ -428,3 +428,8 @@ ipcMain.handle('select-directory', async (event) => {
 
 // Update handlers sú už registrované v UpdateManager
 
+// Get app version handler
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion();
+});
+
