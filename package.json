@@ -49,12 +49,10 @@
       "repo": "ELAPP",
       "private": true
     },
-              "win": {
-            "target": "nsis",
-            "icon": "assets/icon.ico",
-            "sign": false,
-            "signAndEditExecutable": false
-          },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
     "mac": {
       "target": "dmg",
       "icon": "assets/icon.icns"
