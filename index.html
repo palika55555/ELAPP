@@ -279,106 +279,11 @@
                         </div>
                     </div>
                     
-                    <!-- Column Visibility Controls -->
-                    <div class="table-controls">
-                        <div class="column-visibility-dropdown">
-                            <button class="btn btn-sm btn-secondary dropdown-toggle" id="column-toggle-btn">
-                                <i class="fas fa-columns"></i> <span data-translate="columns">Stĺpce</span>
-                                <i class="fas fa-chevron-down"></i>
-                            </button>
-                            <div class="dropdown-menu" id="column-visibility-menu">
-                                <div class="dropdown-header">
-                                    <span data-translate="columnVisibility">Zobrazenie stĺpcov</span>
-                                </div>
-                                <div class="column-options">
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="name" checked>
-                                        <span data-translate="productName">Názov produktu</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="sku" checked>
-                                        <span>EAN</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="plu" checked>
-                                        <span>PLU</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="category" checked>
-                                        <span data-translate="category">Kategória</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="supplier" checked>
-                                        <span data-translate="supplier">Dodávateľ</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="quantity" checked>
-                                        <span data-translate="quantity">Množstvo</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="price" checked>
-                                        <span data-translate="sellingPriceWithoutVAT">Predaj bez DPH</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="price_with_vat" checked>
-                                        <span data-translate="sellingPriceWithVAT">Predaj s DPH</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="cost" checked>
-                                        <span data-translate="cost">Nákup bez DPH</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="cost_with_vat" checked>
-                                        <span data-translate="costWithVAT">Nákup s DPH</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="margin" checked>
-                                        <span data-translate="margin">Marža</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="status" checked>
-                                        <span data-translate="status">Stav</span>
-                                    </label>
-                                    <label class="column-option">
-                                        <input type="checkbox" data-column="actions" checked>
-                                        <span data-translate="actions">Akcie</span>
-                                    </label>
-                                </div>
-                                <div class="dropdown-actions">
-                                    <button class="btn btn-sm btn-primary" id="show-all-columns">
-                                        <span data-translate="showAll">Zobraziť všetky</span>
-                                    </button>
-                                    <button class="btn btn-sm btn-secondary" id="hide-all-columns">
-                                        <span data-translate="hideAll">Skryť všetky</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
                     
-                    <div class="table-container">
-                        <table class="data-table" id="products-table">
-                            <thead>
-                                <tr>
-                                    <th id="product-name-header" data-translate="name">Name</th>
-                                    <th id="product-sku-header" data-translate="ean" style="display: none;">EAN</th>
-                                    <th id="product-plu-header" data-translate="plu">PLU</th>
-                                    <th id="product-category-header" data-translate="category">Category</th>
-                                    <th id="product-supplier-header" data-translate="supplier">Dodávateľ</th>
-                                    <th id="product-quantity-header" data-translate="quantity">Quantity</th>
-                                    <th id="product-selling-price-header" data-translate="sellingPriceWithoutVAT">Predaj bez DPH</th>
-                                    <th id="product-selling-price-with-vat-header" data-translate="sellingPriceWithVAT">Predaj s DPH</th>
-                                    <th id="product-cost-header" data-translate="cost">Nákup bez DPH</th>
-                                    <th id="product-cost-with-vat-header" data-translate="costWithVAT">Nákup s DPH</th>
-                                    <th id="product-margin-header" data-translate="margin">Marža</th>
-                                    <th id="product-status-header" data-translate="status">Status</th>
-                                    <th id="product-actions-header" data-translate="actions">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="products-tbody">
-                                <!-- Products will be loaded here -->
-                            </tbody>
-                        </table>
+                    <!-- Products Cards Container -->
+                    <div class="products-cards-container" id="products-cards-container">
+                        <!-- Products cards will be loaded here -->
                     </div>
                 </div>
 
@@ -615,8 +520,8 @@
                         <input type="text" id="product-name" required>
                     </div>
                     <div class="form-group">
-                        <label for="product-ean" id="product-ean-label" data-translate="ean">EAN *</label>
-                        <input type="text" id="product-ean" required>
+                        <label for="product-ean" id="product-ean-label" data-translate="ean">EAN</label>
+                        <input type="text" id="product-ean">
                     </div>
                     <div class="form-group">
                         <label for="product-plu" id="product-plu-label" data-translate="plu">PLU</label>
@@ -713,7 +618,7 @@
                 </div>
                 <div class="form-group">
                     <label for="stock-quantity" id="stock-quantity-label">Quantity</label>
-                    <input type="number" id="stock-quantity" required min="1">
+                    <input type="number" id="stock-quantity" min="0" value="1">
                 </div>
                 
                 <!-- Additional fields for stock in -->

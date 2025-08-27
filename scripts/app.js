@@ -49,9 +49,9 @@ class InventoryApp {
             // Initialize responsive features
             this.setupMobileFormHandling();
             this.optimizeImages();
-            this.adjustTableScrolling();
+
             this.setupModalScaling();
-            this.setupColumnVisibility();
+    
             
             // Force scrollbar to appear
             this.forceScrollbarDisplay();
@@ -335,10 +335,12 @@ class InventoryApp {
             
             console.log('Initial data loading completed');
             
-            // Force dashboard page after data is loaded
-            setTimeout(() => {
-                this.forceDashboardPage();
-            }, 50);
+            // Only force dashboard page if no specific page is active
+            if (!this.currentPage || this.currentPage === 'dashboard') {
+                setTimeout(() => {
+                    this.forceDashboardPage();
+                }, 50);
+            }
             
         } catch (error) {
             console.error('Error loading initial data:', error);
@@ -775,7 +777,10 @@ class InventoryApp {
                     <button class="btn btn-sm btn-warning" onclick="app.openStockModal('out', '${product.id}')" title="Výdaj">
                         <i class="fas fa-minus"></i>
                     </button>
-                    <button class="btn btn-sm btn-info" onclick="app.openStockModal('adjustment', '${product.id}')" title="Úprava">
+                    <button class="btn btn-sm btn-info" onclick="app.openStockModal('adjustment', '${product.id}')" title="Skladová úprava">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="app.editProduct('${product.id}')" title="Upraviť produkt">
                         <i class="fas fa-edit"></i>
                     </button>
                 </div>
@@ -974,22 +979,43 @@ class InventoryApp {
         };
         title.textContent = titles[type];
 
+        // Reset form first
+        form.reset();
+
         // Show/hide additional fields based on type
         if (type === 'in') {
             stockInFields.style.display = 'block';
             this.populateSuppliersDropdown();
-            this.setupVatCalculation();
             this.setCurrentDateTime();
         } else {
             stockInFields.style.display = 'none';
         }
 
+        // Populate products dropdown
+        this.populateProductsDropdown();
+
         if (productId) {
             document.getElementById('stock-product').value = productId;
         }
 
-        form.reset();
+        // Setup VAT calculation after form reset and field population
+        if (type === 'in') {
+            this.setupVatCalculation();
+        }
+
         this.showModal('stock-modal');
+    }
+
+    populateProductsDropdown() {
+        const productSelect = document.getElementById('stock-product');
+        productSelect.innerHTML = '<option value="">Vyberte produkt</option>';
+        
+        this.products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product.id;
+            option.textContent = `${product.name} (${product.sku || 'bez EAN'}) - ${product.quantity || 0} ks`;
+            productSelect.appendChild(option);
+        });
     }
 
     populateSuppliersDropdown() {
@@ -1005,12 +1031,19 @@ class InventoryApp {
     }
 
     setupVatCalculation() {
+        console.log('Setting up VAT calculation...');
+        
         const costInput = document.getElementById('stock-cost-without-vat');
         const vatRateSelect = document.getElementById('stock-vat-rate');
         const customVatGroup = document.getElementById('stock-custom-vat-group');
         const customVatInput = document.getElementById('stock-custom-vat-rate');
         const vatAmountInput = document.getElementById('stock-vat-amount');
         const costWithVatInput = document.getElementById('stock-cost-with-vat');
+
+        if (!costInput || !vatRateSelect || !vatAmountInput || !costWithVatInput) {
+            console.error('Some VAT calculation elements not found');
+            return;
+        }
 
         const calculateVat = () => {
             const cost = parseFloat(costInput.value) || 0;
@@ -1024,6 +1057,8 @@ class InventoryApp {
             
             const vatAmount = cost * (vatRate / 100);
             const costWithVat = cost + vatAmount;
+            
+            console.log(`Calculating VAT: cost=${cost}, vatRate=${vatRate}, vatAmount=${vatAmount}, costWithVat=${costWithVat}`);
             
             vatAmountInput.value = vatAmount.toFixed(2);
             costWithVatInput.value = costWithVat.toFixed(2);
@@ -1039,9 +1074,15 @@ class InventoryApp {
             }
         };
 
-        costInput.addEventListener('input', calculateVat);
-        vatRateSelect.addEventListener('change', handleVatRateChange);
-        customVatInput.addEventListener('input', calculateVat);
+        // Add event listeners directly
+        costInput.oninput = calculateVat;
+        vatRateSelect.onchange = handleVatRateChange;
+        customVatInput.oninput = calculateVat;
+
+        console.log('VAT calculation setup complete');
+        
+        // Initial calculation
+        calculateVat();
     }
 
     setCurrentDateTime() {
@@ -1483,47 +1524,121 @@ class InventoryApp {
     }
 
     renderSearchResults(results) {
-        const tbody = document.getElementById('products-tbody');
-        tbody.innerHTML = '';
+        const cardsContainer = document.getElementById('products-cards-container');
+        if (!cardsContainer) return;
+        
+        cardsContainer.innerHTML = '';
 
         if (results.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No products found</td></tr>';
+            cardsContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <p>No products found</p>
+                </div>`;
             return;
         }
 
         results.forEach(product => {
-            const row = document.createElement('tr');
+            const card = document.createElement('div');
             const status = this.getProductStatus(product);
             
             // Calculate margin
             const cost = product.cost || 0;
             const price = product.price || 0;
-            const margin = price > 0 ? ((price - cost) / price * 100) : 0;
-            const marginClass = margin >= 30 ? 'high-margin' : margin >= 15 ? 'medium-margin' : 'low-margin';
+            const priceWithVat = product.price_with_vat || price * 1.23;
+            const costWithVat = product.cost_with_vat || cost * 1.23;
+            const margin = priceWithVat > 0 ? ((priceWithVat - costWithVat) / priceWithVat * 100) : 0;
+            const marginClass = margin >= 30 ? 'high' : margin >= 15 ? 'medium' : 'low';
             
-            row.innerHTML = `
-                <td>${product.name}</td>
-                <td>${product.sku}</td>
-                <td>${product.plu || '-'}</td>
-                <td>${product.category_name || '-'}</td>
-                <td>${product.supplier_name || '-'}</td>
-                <td>${product.quantity || 0}</td>
-                <td>€${price.toFixed(2)}</td>
-                <td>€${cost.toFixed(2)}</td>
-                <td><span class="margin-badge ${marginClass}">${margin.toFixed(1)}%</span></td>
-                <td><span class="status-badge ${status.class}">${status.text}</span></td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="btn btn-sm btn-info" onclick="app.editProduct('${product.id}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="app.deleteProduct('${product.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
+            // Determine quantity class
+            const quantity = product.quantity || 0;
+            let quantityClass = 'success';
+            if (quantity === 0) quantityClass = 'danger';
+            else if (quantity <= 5) quantityClass = 'warning';
+            
+            card.className = 'product-card collapsed';
+            card.innerHTML = `
+                <div class="product-card-header">
+                    <h3>${product.name}</h3>
+                    <div class="product-card-ean">EAN: ${product.sku}</div>
+                    ${product.plu ? `<div class="product-card-plu">PLU: ${product.plu}</div>` : ''}
+                </div>
+                <div class="product-card-content">
+                    <div class="product-info-grid">
+                        <div class="product-info-item">
+                            <div class="product-info-label">Kategória</div>
+                            <div class="product-info-value">${product.category_name || 'Neuvedená'}</div>
+                        </div>
+                        <div class="product-info-item">
+                            <div class="product-info-label">Dodávateľ</div>
+                            <div class="product-info-value">${product.supplier_name || 'Neuvedený'}</div>
+                        </div>
+                        <div class="product-info-item">
+                            <div class="product-info-label">Množstvo</div>
+                            <div class="product-info-value ${quantityClass}">${quantity} ks</div>
+                        </div>
+                        <div class="product-info-item">
+                            <div class="product-info-label">Stav</div>
+                            <div class="product-status">
+                                <div class="status-indicator ${status.class}"></div>
+                                <span class="status-text">${status.text}</span>
+                            </div>
+                        </div>
                     </div>
-                </td>
+                    
+                    <div class="product-pricing">
+                        <div class="pricing-row">
+                            <span class="pricing-label">Predaj bez DPH:</span>
+                            <span class="pricing-value">€${price.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Predaj s DPH:</span>
+                            <span class="pricing-value">€${priceWithVat.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Nákup bez DPH:</span>
+                            <span class="pricing-value">€${cost.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Nákup s DPH:</span>
+                            <span class="pricing-value">€${costWithVat.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Marža:</span>
+                            <span class="pricing-value margin ${marginClass}">${margin.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                    
+                    ${product.description ? `
+                        <div class="product-description">
+                            <div class="product-info-label">Popis</div>
+                            <div class="product-info-value">${product.description}</div>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="product-card-actions">
+                    <button class="btn btn-info" onclick="app.editProduct('${product.id}')" title="Upraviť">
+                        <i class="fas fa-edit"></i> Upraviť
+                    </button>
+                    <button class="btn btn-danger" onclick="app.deleteProduct('${product.id}')" title="Vymazať">
+                        <i class="fas fa-trash"></i> Vymazať
+                    </button>
+                </div>
+                <div class="expand-indicator">
+                    <span>Rozbaliť detaily</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
             `;
-            tbody.appendChild(row);
+            
+            // Add click event for expanding/collapsing
+            card.addEventListener('click', (e) => {
+                // Don't expand if clicking on action buttons
+                if (e.target.closest('.product-card-actions')) {
+                    return;
+                }
+                this.toggleProductCard(card);
+            });
+            cardsContainer.appendChild(card);
         });
     }
 
@@ -1699,7 +1814,16 @@ class InventoryApp {
 
             const data = await this.readFileData(file);
             console.log('File data loaded, length:', data.length); // Debug log
-            const products = this.parseCSVData(data);
+            
+            // Try to parse as Excel format first, fallback to CSV
+            let products;
+            try {
+                products = this.parseExcelData(data);
+            } catch (error) {
+                console.log('Excel parsing failed, trying CSV:', error);
+                products = this.parseCSVData(data);
+            }
+            
             console.log('Products parsed:', products.length); // Debug log
             
             this.showImportPreview(products.slice(0, 5));
@@ -1739,6 +1863,85 @@ class InventoryApp {
         return products;
     }
 
+    parseExcelData(data) {
+        // Handle both CSV and Excel formats
+        if (typeof data === 'string') {
+            return this.parseCSVData(data);
+        }
+        
+        // For Excel files, we expect a specific column structure
+        const products = [];
+        
+        // Expected column mapping based on export format
+        const columnMapping = {
+            'názov prod': 'name',
+            'ean': 'sku',
+            'plu': 'plu',
+            'kategória': 'category_name',
+            'dodávateľ': 'supplier_name',
+            'množstvo': 'quantity',
+            'predaj bez': 'price',
+            'predaj s di': 'price_with_vat',
+            'nákup bez': 'cost',
+            'nákup s di': 'cost_with_vat',
+            'sadzba dp': 'vat_rate',
+            'marža (%)': 'margin',
+            'stav': 'status',
+            'jednotka': 'unit',
+            'popis': 'description',
+            'dátum vyt': 'created_at',
+            'dátum aktualizácie': 'updated_at'
+        };
+
+        // Process each row
+        for (let i = 1; i < data.length; i++) {
+            const row = data[i];
+            const product = {};
+            
+            // Map columns based on the expected structure
+            Object.keys(columnMapping).forEach(key => {
+                const value = row[key] || '';
+                product[columnMapping[key]] = value;
+            });
+            
+            // Clean and convert values
+            if (product.quantity) {
+                product.quantity = parseInt(product.quantity.toString().replace(/[^\d]/g, '')) || 0;
+            }
+            
+            if (product.price) {
+                product.price = parseFloat(product.price.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+            }
+            
+            if (product.price_with_vat) {
+                product.price_with_vat = parseFloat(product.price_with_vat.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+            }
+            
+            if (product.cost) {
+                product.cost = parseFloat(product.cost.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+            }
+            
+            if (product.cost_with_vat) {
+                product.cost_with_vat = parseFloat(product.cost_with_vat.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+            }
+            
+            if (product.vat_rate) {
+                product.vat_rate = parseFloat(product.vat_rate.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 23;
+            }
+            
+            if (product.margin) {
+                product.margin = parseFloat(product.margin.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+            }
+            
+            // Skip empty products
+            if (product.name && product.sku) {
+                products.push(product);
+            }
+        }
+
+        return products;
+    }
+
     showImportPreview(products) {
         console.log('Showing import preview for products:', products); // Debug log
         const preview = document.getElementById('import-preview');
@@ -1748,7 +1951,7 @@ class InventoryApp {
             return;
         }
 
-        const headers = ['Názov produktu', 'EAN', 'PLU', 'Kategória', 'Dodávateľ', 'Množstvo', 'Cena (€)'];
+        const headers = ['Názov produktu', 'EAN', 'PLU', 'Kategória', 'Dodávateľ', 'Množstvo', 'Predaj bez DPH', 'Predaj s DPH', 'Nákup bez DPH', 'Nákup s DPH', 'Sadzba DPH', 'Marža (%)', 'Stav'];
         const table = `
             <table class="preview-table">
                 <thead>
@@ -1757,13 +1960,19 @@ class InventoryApp {
                 <tbody>
                     ${products.map(product => `
                         <tr>
-                            <td>${product['názov produktu'] || product.name || ''}</td>
-                            <td>${product.ean || product.sku || ''}</td>
+                            <td>${product.name || product['názov produktu'] || ''}</td>
+                            <td>${product.sku || product.ean || ''}</td>
                             <td>${product.plu || ''}</td>
-                            <td>${product.kategória || product.category || ''}</td>
-                            <td>${product.dodávateľ || product.supplier || ''}</td>
-                            <td>${product.množstvo || product.quantity || ''}</td>
-                            <td>${product['cena (€)'] || product.price || ''}</td>
+                            <td>${product.category_name || product.kategória || ''}</td>
+                            <td>${product.supplier_name || product.dodávateľ || ''}</td>
+                            <td>${product.quantity || product.množstvo || ''}</td>
+                            <td>€${(product.price || 0).toFixed(2)}</td>
+                            <td>€${(product.price_with_vat || 0).toFixed(2)}</td>
+                            <td>€${(product.cost || 0).toFixed(2)}</td>
+                            <td>€${(product.cost_with_vat || 0).toFixed(2)}</td>
+                            <td>${(product.vat_rate || 23).toFixed(1)}%</td>
+                            <td>${(product.margin || 0).toFixed(1)}%</td>
+                            <td>${product.status || 'Na sklade'}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -1787,7 +1996,15 @@ class InventoryApp {
 
         try {
             const data = await this.readFileData(fileInput.files[0]);
-            const products = this.parseCSVData(data);
+            
+            // Try to parse as Excel format first, fallback to CSV
+            let products;
+            try {
+                products = this.parseExcelData(data);
+            } catch (error) {
+                console.log('Excel parsing failed, trying CSV:', error);
+                products = this.parseCSVData(data);
+            }
             
             if (products.length === 0) {
                 this.showNotification('Súbor neobsahuje žiadne produkty', 'error');
@@ -1806,13 +2023,7 @@ class InventoryApp {
             this.showNotification(`Import dokončený: ${result.added} pridané, ${result.updated} aktualizované, ${result.skipped} preskočené`, 'success');
             this.closeAllModals();
             
-            // Force reload data from database
-            await this.loadInitialData();
-            
-            // Debug: check if data was reloaded
-            console.log('Products after reload:', this.products.map(p => `${p.name}: ${p.quantity}`));
-            
-            // Immediately update the current page UI
+            // Update current page only
             if (this.currentPage === 'products') {
                 this.renderProducts();
             } else if (this.currentPage === 'dashboard') {
@@ -1821,14 +2032,10 @@ class InventoryApp {
                 this.renderStockTable();
             }
             
-            // Force a complete UI refresh
-            setTimeout(() => {
-                this.loadPageData();
-                // Update system info if on settings page
-                if (this.currentPage === 'settings') {
-                    this.updateSystemInfo();
-                }
-            }, 100);
+            // Update system info if on settings page
+            if (this.currentPage === 'settings') {
+                this.updateSystemInfo();
+            }
         } catch (error) {
             console.error('Import error:', error);
             this.showNotification('Chyba pri importe', 'error');
@@ -1842,33 +2049,43 @@ class InventoryApp {
 
         for (const product of products) {
             try {
-                // Map CSV fields to expected field names
-                const productName = product['názov produktu'] || product.name;
-                const productEAN = product.ean || product.sku;
+                // Map fields to expected field names
+                const productName = product.name || product['názov produktu'];
+                const productEAN = product.sku || product.ean;
                 
                 console.log(`Processing product: ${productName} (EAN: ${productEAN})`);
                 
-                // Skip products with empty EAN to prevent duplicates
-                if (!productEAN || productEAN.trim() === '') {
-                    console.log(`Skipping product ${productName} - empty EAN`);
+                // Skip products with empty name
+                if (!productName || productName.trim() === '') {
+                    console.log(`Skipping product - empty name`);
                     skipped++;
                     continue;
                 }
                 
-                const existingProduct = this.products.find(p => p.sku === productEAN);
+                // Find existing product by EAN if available, otherwise by name
+                const existingProduct = productEAN && productEAN.trim() !== '' 
+                    ? this.products.find(p => p.sku === productEAN)
+                    : this.products.find(p => p.name.toLowerCase() === productName.toLowerCase());
                 
                 if (existingProduct) {
                     // Product exists with same EAN - add quantity to existing stock
                     const currentQuantity = existingProduct.quantity || 0;
-                    const addQuantity = parseInt((product.množstvo || product.quantity || '0').replace(' ks', '')) || 0;
+                    const addQuantity = parseInt(product.quantity || product.množstvo || '0') || 0;
                     const newQuantity = currentQuantity + addQuantity;
                     
                     console.log(`Adding quantity to existing product ${existingProduct.name}: ${currentQuantity} + ${addQuantity} = ${newQuantity}`);
                     
-                    // Update product with new quantity
+                    // Update product with new quantity and other fields if provided
                     const updatedProduct = {
                         ...existingProduct,
-                        quantity: newQuantity
+                        quantity: newQuantity,
+                        price: product.price || existingProduct.price,
+                        price_with_vat: product.price_with_vat || existingProduct.price_with_vat,
+                        cost: product.cost || existingProduct.cost,
+                        cost_with_vat: product.cost_with_vat || existingProduct.cost_with_vat,
+                        category_name: product.category_name || existingProduct.category_name,
+                        supplier_name: product.supplier_name || existingProduct.supplier_name,
+                        description: product.description || existingProduct.description
                     };
                     
                     await window.electronAPI.updateProduct(updatedProduct);
@@ -1886,16 +2103,19 @@ class InventoryApp {
                     
                     updated++;
                 } else {
-                    // New product - add it
+                    // New product - add it with all available fields
                     const newProduct = {
                         name: productName,
                         sku: productEAN,
                         plu: product.plu || '',
-                        category_name: product.kategória || product.category || '',
-                        supplier_name: product.dodávateľ || product.supplier || '',
-                        quantity: parseInt((product.množstvo || product.quantity || '0').replace(' ks', '')) || 0,
-                        price: parseFloat((product['cena (€)'] || product.price || '0').replace('€', '')) || 0,
-
+                        category_name: product.category_name || product.kategória || '',
+                        supplier_name: product.supplier_name || product.dodávateľ || '',
+                        quantity: parseInt(product.quantity || product.množstvo || '0') || 0,
+                        price: parseFloat(product.price || '0') || 0,
+                        price_with_vat: parseFloat(product.price_with_vat || '0') || 0,
+                        cost: parseFloat(product.cost || '0') || 0,
+                        cost_with_vat: parseFloat(product.cost_with_vat || '0') || 0,
+                        description: product.description || product.popis || ''
                     };
                     
                     console.log(`Adding new product: ${newProduct.name} with EAN: ${newProduct.sku}`);
@@ -1989,8 +2209,16 @@ class InventoryApp {
             try {
                 await window.electronAPI.deleteProduct(productId);
                 this.showNotification('Product deleted successfully', 'success');
-                await this.loadInitialData();
-                this.renderProducts();
+                
+                // Update local data
+                this.products = this.products.filter(p => p.id !== productId);
+                
+                // Update current page only
+                if (this.currentPage === 'products') {
+                    this.renderProducts();
+                } else if (this.currentPage === 'dashboard') {
+                    this.updateDashboard();
+                }
             } catch (error) {
                 console.error('Error deleting product:', error);
                 this.showNotification('Error deleting product', 'error');
@@ -2007,8 +2235,14 @@ class InventoryApp {
             try {
                 await window.electronAPI.deleteSupplier(supplierId);
                 this.showNotification('Supplier deleted successfully', 'success');
-                await this.loadInitialData();
-                this.renderSuppliers();
+                
+                // Update local data
+                this.suppliers = this.suppliers.filter(s => s.id !== supplierId);
+                
+                // Update current page only
+                if (this.currentPage === 'suppliers') {
+                    this.renderSuppliers();
+                }
             } catch (error) {
                 console.error('Error deleting supplier:', error);
                 this.showNotification('Error deleting supplier', 'error');
@@ -2048,8 +2282,14 @@ class InventoryApp {
             
             await window.electronAPI.deleteCategory(categoryId);
             this.showNotification('Kategória bola úspešne vymazaná', 'success');
-            await this.loadInitialData();
-            this.renderCategories();
+            
+            // Update local data
+            this.categories = this.categories.filter(c => c.id !== categoryId);
+            
+            // Update current page only
+            if (this.currentPage === 'categories') {
+                this.renderCategories();
+            }
         } catch (error) {
             console.error('Error deleting category:', error);
             this.showNotification('Chyba pri vymazávaní kategórie', 'error');
@@ -2847,24 +3087,12 @@ class InventoryApp {
         }
         
         // Adjust table scrolling on resize
-        this.adjustTableScrolling();
+
     }
     
     adjustTableScrolling() {
-        const tables = document.querySelectorAll('.data-table');
-        tables.forEach(table => {
-            const container = table.closest('.table-container');
-            if (container) {
-                const tableWidth = table.scrollWidth;
-                const containerWidth = container.clientWidth;
-                
-                if (tableWidth > containerWidth) {
-                    container.style.overflowX = 'auto';
-                } else {
-                    container.style.overflowX = 'hidden';
-                }
-            }
-        });
+        // This function is no longer needed for card layout
+        // Keeping it for potential future use
     }
     
     // Enhanced modal handling for mobile
@@ -3315,63 +3543,121 @@ class InventoryApp {
         this.filteredProducts = filteredProducts;
         
         // Update the products display
-        const tbody = document.getElementById('products-tbody');
-        if (!tbody) return;
+        const cardsContainer = document.getElementById('products-cards-container');
+        if (!cardsContainer) return;
         
-        tbody.innerHTML = '';
+        cardsContainer.innerHTML = '';
         
         if (filteredProducts.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="13" class="empty-state">${this.getTranslation('noProductsFound')}</td></tr>`;
+            cardsContainer.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-box-open"></i>
+                    <p>${this.getTranslation('noProductsFound')}</p>
+                </div>`;
             return;
         }
         
         filteredProducts.forEach(product => {
-            const row = document.createElement('tr');
+            const card = document.createElement('div');
             const status = this.getProductStatus(product);
             
             // Calculate margin
             const cost = product.cost || 0;
             const price = product.price || 0;
             const priceWithVat = product.price_with_vat || price * 1.23;
-            const margin = priceWithVat > 0 ? ((priceWithVat - cost) / priceWithVat * 100) : 0;
-            const marginClass = margin >= 30 ? 'high-margin' : margin >= 15 ? 'medium-margin' : 'low-margin';
+            const costWithVat = product.cost_with_vat || cost * 1.23;
+            const margin = priceWithVat > 0 ? ((priceWithVat - costWithVat) / priceWithVat * 100) : 0;
+            const marginClass = margin >= 30 ? 'high' : margin >= 15 ? 'medium' : 'low';
             
-            // Create tooltip content
-            const tooltipContent = product.description ? 
-                `<div class="product-tooltip">
-                    <strong>${product.name}</strong><br>
-                    ${product.description}
-                </div>` : '';
+            // Determine quantity class
+            const quantity = product.quantity || 0;
+            let quantityClass = 'success';
+            if (quantity === 0) quantityClass = 'danger';
+            else if (quantity <= 5) quantityClass = 'warning';
             
-            row.innerHTML = `
-                <td class="product-name-cell" ${product.description ? `data-tooltip="${product.description}"` : ''}>
-                    <div class="product-name">${product.name}</div>
-                    <div class="product-ean">${product.sku}</div>
-                    ${product.description ? '<i class="fas fa-info-circle tooltip-indicator"></i>' : ''}
-                </td>
-                <td style="display: none;">${product.sku}</td>
-                <td>${product.plu || '-'}</td>
-                <td>${product.category_name || '-'}</td>
-                <td>${product.supplier_name || '-'}</td>
-                <td>${product.quantity || 0}</td>
-                <td>€${price.toFixed(2)}</td>
-                <td>€${priceWithVat.toFixed(2)}</td>
-                <td>€${cost.toFixed(2)}</td>
-                <td>€${(product.cost_with_vat || cost * 1.23).toFixed(2)}</td>
-                <td><span class="margin-badge ${marginClass}">${margin.toFixed(1)}%</span></td>
-                <td><span class="status-badge ${status.class}">${status.text}</span></td>
-                <td>
-                    <div class="action-buttons">
-                        <button class="btn btn-sm btn-info" onclick="app.editProduct('${product.id}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="app.deleteProduct('${product.id}')">
-                            <i class="fas fa-trash"></i>
-                        </button>
+            card.className = 'product-card collapsed';
+            card.innerHTML = `
+                <div class="product-card-header">
+                    <h3>${product.name}</h3>
+                    <div class="product-card-ean">EAN: ${product.sku}</div>
+                    ${product.plu ? `<div class="product-card-plu">PLU: ${product.plu}</div>` : ''}
+                </div>
+                <div class="product-card-content">
+                    <div class="product-info-grid">
+                        <div class="product-info-item">
+                            <div class="product-info-label">Kategória</div>
+                            <div class="product-info-value">${product.category_name || 'Neuvedená'}</div>
+                        </div>
+                        <div class="product-info-item">
+                            <div class="product-info-label">Dodávateľ</div>
+                            <div class="product-info-value">${product.supplier_name || 'Neuvedený'}</div>
+                        </div>
+                        <div class="product-info-item">
+                            <div class="product-info-label">Množstvo</div>
+                            <div class="product-info-value ${quantityClass}">${quantity} ks</div>
+                        </div>
+                        <div class="product-info-item">
+                            <div class="product-info-label">Stav</div>
+                            <div class="product-status">
+                                <div class="status-indicator ${status.class}"></div>
+                                <span class="status-text">${status.text}</span>
+                            </div>
+                        </div>
                     </div>
-                </td>
+                    
+                    <div class="product-pricing">
+                        <div class="pricing-row">
+                            <span class="pricing-label">Predaj bez DPH:</span>
+                            <span class="pricing-value">€${price.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Predaj s DPH:</span>
+                            <span class="pricing-value">€${priceWithVat.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Nákup bez DPH:</span>
+                            <span class="pricing-value">€${cost.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Nákup s DPH:</span>
+                            <span class="pricing-value">€${costWithVat.toFixed(2)}</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Marža:</span>
+                            <span class="pricing-value margin ${marginClass}">${margin.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                    
+                    ${product.description ? `
+                        <div class="product-description">
+                            <div class="product-info-label">Popis</div>
+                            <div class="product-info-value">${product.description}</div>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="product-card-actions">
+                    <button class="btn btn-info" onclick="app.editProduct('${product.id}')" title="Upraviť">
+                        <i class="fas fa-edit"></i> Upraviť
+                    </button>
+                    <button class="btn btn-danger" onclick="app.deleteProduct('${product.id}')" title="Vymazať">
+                        <i class="fas fa-trash"></i> Vymazať
+                    </button>
+                </div>
+                <div class="expand-indicator">
+                    <span>Rozbaliť detaily</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
             `;
-            tbody.appendChild(row);
+            
+            // Add click event for expanding/collapsing
+            card.addEventListener('click', (e) => {
+                // Don't expand if clicking on action buttons
+                if (e.target.closest('.product-card-actions')) {
+                    return;
+                }
+                this.toggleProductCard(card);
+            });
+            cardsContainer.appendChild(card);
         });
     }
     
@@ -3731,79 +4017,9 @@ class InventoryApp {
         }
     }
     
-    // ===== COLUMN VISIBILITY =====
-    
-    setupColumnVisibility() {
-        // Load saved column visibility state
-        this.loadColumnVisibilityState();
-        
-        // Setup dropdown toggle
-        const toggleBtn = document.getElementById('column-toggle-btn');
-        const dropdown = document.getElementById('column-visibility-menu');
-        
-        if (toggleBtn && dropdown) {
-            toggleBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleColumnDropdown();
-            });
-        }
-        
-        // Setup column checkboxes
-        const columnCheckboxes = document.querySelectorAll('.column-option input[type="checkbox"]');
-        columnCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', (e) => {
-                this.toggleColumn(e.target.dataset.column, e.target.checked);
-            });
-        });
-        
-        // Setup action buttons
-        const showAllBtn = document.getElementById('show-all-columns');
-        const hideAllBtn = document.getElementById('hide-all-columns');
-        
-        if (showAllBtn) {
-            showAllBtn.addEventListener('click', () => {
-                this.showAllColumns();
-            });
-        }
-        
-        if (hideAllBtn) {
-            hideAllBtn.addEventListener('click', () => {
-                this.hideAllColumns();
-            });
-        }
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.column-visibility-dropdown')) {
-                this.closeColumnDropdown();
-            }
-        });
-    }
+
     
     forceScrollbarDisplay() {
-        // Force scrollbar to appear by temporarily adding content
-        const tableContainer = document.querySelector('.table-container');
-        if (tableContainer) {
-            // Add a temporary element to force scrollbar
-            const tempElement = document.createElement('div');
-            tempElement.style.width = '1px';
-            tempElement.style.height = '1px';
-            tempElement.style.position = 'absolute';
-            tempElement.style.left = '2000px';
-            tempElement.style.top = '0';
-            tempElement.style.pointerEvents = 'none';
-            tempElement.style.opacity = '0';
-            
-            tableContainer.appendChild(tempElement);
-            
-            // Remove after a short delay
-            setTimeout(() => {
-                if (tempElement.parentNode) {
-                    tempElement.parentNode.removeChild(tempElement);
-                }
-            }, 100);
-        }
-        
         // Setup tooltip positioning
         this.setupTooltipPositioning();
         
@@ -3905,111 +4121,7 @@ class InventoryApp {
         });
     }
     
-    toggleColumnDropdown() {
-        const dropdown = document.querySelector('.column-visibility-dropdown');
-        if (dropdown) {
-            dropdown.classList.toggle('active');
-        }
-    }
-    
-    closeColumnDropdown() {
-        const dropdown = document.querySelector('.column-visibility-dropdown');
-        if (dropdown) {
-            dropdown.classList.remove('active');
-        }
-    }
-    
-    toggleColumn(columnName, visible) {
-        const table = document.getElementById('products-table');
-        if (!table) return;
-        
-        // Get column index based on column name
-        const columnIndex = this.getColumnIndex(columnName);
-        if (columnIndex === -1) return;
-        
-        // Toggle visibility of all cells in the column
-        const rows = table.querySelectorAll('tr');
-        rows.forEach(row => {
-            const cell = row.cells[columnIndex];
-            if (cell) {
-                if (visible) {
-                    cell.classList.remove('hidden');
-                } else {
-                    cell.classList.add('hidden');
-                }
-            }
-        });
-        
-        // Save state
-        this.saveColumnVisibilityState();
-    }
-    
-    getColumnIndex(columnName) {
-        const columnMap = {
-            'name': 0,
-            'sku': 1,
-            'plu': 2,
-            'category': 3,
-            'supplier': 4,
-            'quantity': 5,
-            'price': 6,
-            'price_with_vat': 7,
-            'cost': 8,
-            'cost_with_vat': 9,
-            'margin': 10,
-            'status': 11,
-            'actions': 12
-        };
-        
-        return columnMap[columnName] || -1;
-    }
-    
-    showAllColumns() {
-        const checkboxes = document.querySelectorAll('.column-option input[type="checkbox"]');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = true;
-            this.toggleColumn(checkbox.dataset.column, true);
-        });
-    }
-    
-    hideAllColumns() {
-        const checkboxes = document.querySelectorAll('.column-option input[type="checkbox"]');
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false;
-            this.toggleColumn(checkbox.dataset.column, false);
-        });
-    }
-    
-    saveColumnVisibilityState() {
-        const state = {};
-        const checkboxes = document.querySelectorAll('.column-option input[type="checkbox"]');
-        
-        checkboxes.forEach(checkbox => {
-            state[checkbox.dataset.column] = checkbox.checked;
-        });
-        
-        localStorage.setItem('columnVisibilityState', JSON.stringify(state));
-    }
-    
-    loadColumnVisibilityState() {
-        const savedState = localStorage.getItem('columnVisibilityState');
-        if (!savedState) return;
-        
-        try {
-            const state = JSON.parse(savedState);
-            const checkboxes = document.querySelectorAll('.column-option input[type="checkbox"]');
-            
-            checkboxes.forEach(checkbox => {
-                const columnName = checkbox.dataset.column;
-                if (state.hasOwnProperty(columnName)) {
-                    checkbox.checked = state[columnName];
-                    this.toggleColumn(columnName, state[columnName]);
-                }
-            });
-        } catch (error) {
-            console.error('Error loading column visibility state:', error);
-        }
-    }
+
     
     getSelectedVatRate() {
         const vatRateSelect = document.getElementById('product-vat-rate');
@@ -4184,6 +4296,38 @@ class InventoryApp {
             const versionElement = document.getElementById('current-version');
             if (versionElement) {
                 versionElement.textContent = 'Chyba';
+            }
+        }
+    }
+
+    toggleProductCard(card) {
+        const isExpanded = card.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse the card
+            card.classList.remove('expanded');
+            card.classList.add('collapsed');
+            
+            // Update the expand indicator
+            const expandIndicator = card.querySelector('.expand-indicator');
+            if (expandIndicator) {
+                expandIndicator.innerHTML = `
+                    <span>Rozbaliť detaily</span>
+                    <i class="fas fa-chevron-down"></i>
+                `;
+            }
+        } else {
+            // Expand the card
+            card.classList.remove('collapsed');
+            card.classList.add('expanded');
+            
+            // Update the expand indicator
+            const expandIndicator = card.querySelector('.expand-indicator');
+            if (expandIndicator) {
+                expandIndicator.innerHTML = `
+                    <span>Zbaliť detaily</span>
+                    <i class="fas fa-chevron-up"></i>
+                `;
             }
         }
     }
