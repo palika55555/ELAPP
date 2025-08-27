@@ -36,7 +36,13 @@ class UpdateManager {
 
         autoUpdater.on('error', (err) => {
             console.error('Updater error:', err);
-            this.sendStatusToWindow('Chyba pri kontrole aktualizácií', err);
+            // V development móde ignorujeme chyby
+            if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+                console.log('Development mode - ignoring updater error');
+                this.sendStatusToWindow('Aplikácia je aktuálna (development mode)');
+            } else {
+                this.sendStatusToWindow('Chyba pri kontrole aktualizácií', err);
+            }
         });
 
         autoUpdater.on('download-progress', (progressObj) => {
@@ -80,10 +86,14 @@ class UpdateManager {
     async checkForUpdates() {
         try {
             console.log('Checking for updates...');
-            // Force update check even in development mode
-            if (process.env.NODE_ENV === 'development') {
-                console.log('Development mode detected, forcing update check...');
+            
+            // V development móde simulujeme úspešnú kontrolu
+            if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+                console.log('Development mode detected, simulating update check...');
+                this.sendStatusToWindow('Aplikácia je aktuálna (development mode)');
+                return { success: true };
             }
+            
             await autoUpdater.checkForUpdates();
             return { success: true };
         } catch (error) {
