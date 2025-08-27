@@ -2101,9 +2101,9 @@ class InventoryApp {
             try {
                 // Map fields to expected field names
                 const productName = product.name || product['názov produktu'];
-                const productEAN = product.sku || product.ean;
+                const productEAN = (product.sku || product.ean || '').trim() || null;
                 
-                console.log(`Processing product: ${productName} (EAN: ${productEAN})`);
+                console.log(`Processing product: ${productName} (EAN: ${productEAN || 'bez EAN'})`);
                 console.log(`Product description from import: ${product.description || 'žiadny'}`);
                 
                 // Skip products with empty name
@@ -2114,9 +2114,12 @@ class InventoryApp {
                 }
                 
                 // Find existing product by EAN if available, otherwise by name
-                const existingProduct = productEAN && productEAN.trim() !== '' 
+                const existingProduct = productEAN 
                     ? this.products.find(p => p.sku === productEAN)
                     : this.products.find(p => p.name.toLowerCase() === productName.toLowerCase());
+                
+                console.log(`Looking for existing product by ${productEAN ? 'EAN' : 'name'}: ${productEAN || productName}`);
+                console.log(`Found existing product: ${existingProduct ? existingProduct.name : 'nie'}`);
                 
                 if (existingProduct) {
                     // Product exists with same EAN - add quantity to existing stock
