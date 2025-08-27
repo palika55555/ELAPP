@@ -80,6 +80,10 @@ class UpdateManager {
     async checkForUpdates() {
         try {
             console.log('Checking for updates...');
+            // Force update check even in development mode
+            if (process.env.NODE_ENV === 'development') {
+                console.log('Development mode detected, forcing update check...');
+            }
             await autoUpdater.checkForUpdates();
             return { success: true };
         } catch (error) {
