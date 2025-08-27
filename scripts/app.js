@@ -14,6 +14,10 @@ class InventoryApp {
             backupPath: ''
         };
         
+        // Inventory functionality
+        this.inventoryData = [];
+        this.inventoryActive = false;
+        
         // Update functionality
         this.updateStatus = {
             isUpdateAvailable: false,
@@ -753,6 +757,14 @@ class InventoryApp {
         }
 
         this.products.forEach(product => {
+            // Calculate margin
+            const cost = product.cost || 0;
+            const price = product.price || 0;
+            const priceWithVat = product.price_with_vat || price * 1.23;
+            const costWithVat = product.cost_with_vat || cost * 1.23;
+            const margin = priceWithVat > 0 ? ((priceWithVat - costWithVat) / priceWithVat * 100) : 0;
+            const marginClass = margin >= 30 ? 'high' : margin >= 15 ? 'medium' : 'low';
+            
             const card = document.createElement('div');
             card.className = 'stock-product-card';
             card.innerHTML = `
@@ -764,6 +776,10 @@ class InventoryApp {
                     <div class="stock-quantity">
                         <span class="quantity-label">Množstvo:</span>
                         <span class="quantity-value">${product.quantity || 0} ${product.unit || 'ks'}</span>
+                    </div>
+                    <div class="stock-margin">
+                        <span class="margin-label">${this.getTranslation('stockMargin')}:</span>
+                        <span class="margin-value ${marginClass}">${margin.toFixed(1)}%</span>
                     </div>
                     <div class="stock-last-movement">
                         <span class="movement-label">Posledný pohyb:</span>
@@ -1846,11 +1862,17 @@ class InventoryApp {
         const lines = csvText.split('\n').filter(line => line.trim());
         if (lines.length === 0) return [];
 
-        const headers = lines[0].split(';').map(h => h.trim());
+        // Try to detect delimiter (comma or semicolon)
+        const firstLine = lines[0];
+        const commaCount = (firstLine.match(/,/g) || []).length;
+        const semicolonCount = (firstLine.match(/;/g) || []).length;
+        const delimiter = commaCount > semicolonCount ? ',' : ';';
+
+        const headers = lines[0].split(delimiter).map(h => h.trim().replace(/"/g, ''));
         const products = [];
 
         for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(';').map(v => v.trim());
+            const values = lines[i].split(delimiter).map(v => v.trim().replace(/"/g, ''));
             const product = {};
             
             headers.forEach((header, index) => {
@@ -1872,23 +1894,35 @@ class InventoryApp {
         // For Excel files, we expect a specific column structure
         const products = [];
         
+        console.log('Parsing Excel data:', data);
+        if (data.length > 0) {
+            console.log('First row headers:', data[0]);
+        }
+        
         // Expected column mapping based on export format
         const columnMapping = {
+            'názov produktu': 'name',
             'názov prod': 'name',
             'ean': 'sku',
             'plu': 'plu',
             'kategória': 'category_name',
             'dodávateľ': 'supplier_name',
             'množstvo': 'quantity',
+            'predaj bez dph': 'price',
             'predaj bez': 'price',
+            'predaj s dph': 'price_with_vat',
             'predaj s di': 'price_with_vat',
+            'nákup bez dph': 'cost',
             'nákup bez': 'cost',
+            'nákup s dph': 'cost_with_vat',
             'nákup s di': 'cost_with_vat',
+            'sadzba dph': 'vat_rate',
             'sadzba dp': 'vat_rate',
             'marža (%)': 'margin',
             'stav': 'status',
             'jednotka': 'unit',
             'popis': 'description',
+            'dátum vytvorenia': 'created_at',
             'dátum vyt': 'created_at',
             'dátum aktualizácie': 'updated_at'
         };
@@ -1900,7 +1934,20 @@ class InventoryApp {
             
             // Map columns based on the expected structure
             Object.keys(columnMapping).forEach(key => {
-                const value = row[key] || '';
+                // Try to find the column by exact match or partial match
+                let value = '';
+                if (row[key] !== undefined) {
+                    value = row[key];
+                } else {
+                    // Try partial matching for column names
+                    const matchingKey = Object.keys(row).find(colKey => 
+                        colKey.toLowerCase().includes(key.toLowerCase()) || 
+                        key.toLowerCase().includes(colKey.toLowerCase())
+                    );
+                    if (matchingKey) {
+                        value = row[matchingKey];
+                    }
+                }
                 product[columnMapping[key]] = value;
             });
             
@@ -4330,6 +4377,486 @@ class InventoryApp {
                 `;
             }
         }
+    }
+
+    toggleSidebar() {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.querySelector('.sidebar-overlay');
+        
+        if (sidebar) {
+            sidebar.classList.toggle('active');
+        }
+        
+        if (overlay) {
+            overlay.classList.toggle('active');
+        }
+    }
+
+    // Inventory functions
+    startInventory() {
+        this.inventoryData = [];
+        this.inventoryActive = true;
+        
+        // Create inventory data from current products
+        this.inventoryData = this.products.map(product => ({
+            id: product.id,
+            name: product.name,
+            sku: product.sku,
+            currentQuantity: product.quantity || 0,
+            countedQuantity: product.quantity || 0,
+            category: product.category_name || 'Neuvedená',
+            supplier: product.supplier_name || 'Neuvedený',
+            status: 'pending'
+        }));
+        
+        this.renderInventory();
+        this.updateInventoryControls();
+        this.showNotification(this.getTranslation('inventoryStarted'), 'success');
+    }
+
+    renderInventory() {
+        const inventoryList = document.getElementById('inventory-list');
+        if (!inventoryList) return;
+
+        // Add summary
+        const summary = this.calculateInventorySummary();
+        inventoryList.innerHTML = `
+            <div class="inventory-summary">
+                <div class="inventory-summary-grid">
+                    <div class="inventory-summary-item">
+                        <div class="inventory-summary-label">Celkovo produktov</div>
+                        <div class="inventory-summary-value total">${summary.total}</div>
+                    </div>
+                    <div class="inventory-summary-item">
+                        <div class="inventory-summary-label">Zhodné</div>
+                        <div class="inventory-summary-value">${summary.matches}</div>
+                    </div>
+                    <div class="inventory-summary-item">
+                        <div class="inventory-summary-label">Rozdiely</div>
+                        <div class="inventory-summary-value differences">${summary.differences}</div>
+                    </div>
+                    <div class="inventory-summary-item">
+                        <div class="inventory-summary-label">Nezapočítané</div>
+                        <div class="inventory-summary-value pending">${summary.pending}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add inventory items
+        this.inventoryData.forEach(item => {
+            const itemElement = document.createElement('div');
+            itemElement.className = 'inventory-item';
+            
+            const statusClass = item.status === 'match' ? 'match' : 
+                              item.status === 'difference' ? 'difference' : 'pending';
+            
+            itemElement.innerHTML = `
+                <div class="inventory-item-info">
+                    <div class="inventory-item-name">${item.name}</div>
+                    <div class="inventory-item-details">
+                        <span>EAN: ${item.sku}</span>
+                        <span>Kategória: ${item.category}</span>
+                        <span>Dodávateľ: ${item.supplier}</span>
+                    </div>
+                </div>
+                <div class="inventory-item-quantity">
+                    <span>Systém: ${item.currentQuantity}</span>
+                    <input type="number" 
+                           value="${item.countedQuantity}" 
+                           min="0" 
+                           onchange="app.updateInventoryQuantity('${item.id}', this.value)"
+                           placeholder="Počet">
+                    <div class="inventory-item-status ${statusClass}">
+                        <i class="fas fa-${item.status === 'match' ? 'check' : item.status === 'difference' ? 'exclamation-triangle' : 'clock'}"></i>
+                        <span>${item.status === 'match' ? 'Zhodné' : item.status === 'difference' ? 'Rozdiel' : 'Nezapočítané'}</span>
+                    </div>
+                </div>
+            `;
+            
+            inventoryList.appendChild(itemElement);
+        });
+    }
+
+    updateInventoryQuantity(productId, newQuantity) {
+        const item = this.inventoryData.find(item => item.id === productId);
+        if (!item) return;
+
+        const countedQuantity = parseInt(newQuantity) || 0;
+        item.countedQuantity = countedQuantity;
+        
+        // Update status
+        if (countedQuantity === item.currentQuantity) {
+            item.status = 'match';
+        } else if (countedQuantity !== item.currentQuantity) {
+            item.status = 'difference';
+        } else {
+            item.status = 'pending';
+        }
+        
+        this.renderInventory();
+    }
+
+    calculateInventorySummary() {
+        const summary = {
+            total: this.inventoryData.length,
+            matches: 0,
+            differences: 0,
+            pending: 0
+        };
+
+        this.inventoryData.forEach(item => {
+            if (item.status === 'match') summary.matches++;
+            else if (item.status === 'difference') summary.differences++;
+            else summary.pending++;
+        });
+
+        return summary;
+    }
+
+    updateInventoryControls() {
+        const startBtn = document.querySelector('button[onclick="app.startInventory()"]');
+        const exportBtn = document.querySelector('button[onclick="app.exportInventory()"]');
+        const pdfBtn = document.querySelector('button[onclick="app.exportInventoryToPDF()"]');
+        const finishBtn = document.querySelector('button[onclick="app.finishInventory()"]');
+
+        if (startBtn) startBtn.style.display = this.inventoryActive ? 'none' : 'block';
+        if (exportBtn) exportBtn.style.display = this.inventoryActive ? 'block' : 'none';
+        if (pdfBtn) pdfBtn.style.display = this.inventoryActive ? 'block' : 'none';
+        if (finishBtn) finishBtn.style.display = this.inventoryActive ? 'block' : 'none';
+    }
+
+    exportInventory() {
+        if (!this.inventoryData || this.inventoryData.length === 0) {
+            this.showNotification(this.getTranslation('noDataToExport'), 'warning');
+            return;
+        }
+
+        const summary = this.calculateInventorySummary();
+        const differences = this.inventoryData.filter(item => item.status === 'difference');
+        
+        // Create properly formatted CSV with separate columns
+        let csvContent = 'Názov produktu,EAN,Systémové množstvo,Skutočné množstvo,Rozdiel,Kategória,Dodávateľ,Stav\n';
+        
+        this.inventoryData.forEach(item => {
+            const difference = item.countedQuantity - item.currentQuantity;
+            const status = item.status === 'match' ? 'Zhodné' : item.status === 'difference' ? 'Rozdiel' : 'Nezapočítané';
+            csvContent += `"${item.name}","${item.sku}",${item.currentQuantity},${item.countedQuantity},${difference},"${item.category}","${item.supplier}","${status}"\n`;
+        });
+
+        // Add summary section with proper spacing
+        csvContent += '\n';
+        csvContent += 'Súhrn inventúry\n';
+        csvContent += 'Kategória,Hodnota\n';
+        csvContent += `Celkovo produktov,${summary.total}\n`;
+        csvContent += `Zhodné,${summary.matches}\n`;
+        csvContent += `Rozdiely,${summary.differences}\n`;
+        csvContent += `Nezapočítané,${summary.pending}\n`;
+
+        // Save inventory to database
+        this.saveInventoryToDatabase();
+
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `inventura_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        this.showNotification(this.getTranslation('inventoryExported'), 'success');
+    }
+
+    exportInventoryToPDF() {
+        if (!this.inventoryData || this.inventoryData.length === 0) {
+            this.showNotification(this.getTranslation('noDataToExport'), 'warning');
+            return;
+        }
+
+        const summary = this.calculateInventorySummary();
+        const differences = this.inventoryData.filter(item => item.status === 'difference');
+        
+        // Create PDF content
+        let pdfContent = `
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Inventúra produktov</title>
+                <style>
+                    body { font-family: Arial, sans-serif; margin: 20px; }
+                    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                    th { background-color: #f2f2f2; font-weight: bold; }
+                    .summary { margin: 20px 0; padding: 15px; background-color: #f9f9f9; border-radius: 5px; }
+                    .summary h3 { margin-top: 0; }
+                    .summary-item { margin: 10px 0; }
+                    .header { text-align: center; margin-bottom: 30px; }
+                    .header h1 { color: #2c3e50; }
+                    .status-match { color: #27ae60; }
+                    .status-difference { color: #e74c3c; }
+                    .status-pending { color: #f39c12; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>Inventúra produktov</h1>
+                    <p>Dátum: ${new Date().toLocaleDateString('sk-SK')}</p>
+                </div>
+                
+                <div class="summary">
+                    <h3>Súhrn inventúry</h3>
+                    <div class="summary-item">Celkovo produktov: ${summary.total}</div>
+                    <div class="summary-item">Zhodné: ${summary.matches}</div>
+                    <div class="summary-item">Rozdiely: ${summary.differences}</div>
+                    <div class="summary-item">Nezapočítané: ${summary.pending}</div>
+                </div>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Názov produktu</th>
+                            <th>EAN</th>
+                            <th>Systémové množstvo</th>
+                            <th>Skutočné množstvo</th>
+                            <th>Rozdiel</th>
+                            <th>Kategória</th>
+                            <th>Dodávateľ</th>
+                            <th>Stav</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        this.inventoryData.forEach(item => {
+            const difference = item.countedQuantity - item.currentQuantity;
+            const statusClass = item.status === 'match' ? 'status-match' : item.status === 'difference' ? 'status-difference' : 'status-pending';
+            const status = item.status === 'match' ? 'Zhodné' : item.status === 'difference' ? 'Rozdiel' : 'Nezapočítané';
+            
+            pdfContent += `
+                <tr>
+                    <td>${item.name}</td>
+                    <td>${item.sku}</td>
+                    <td>${item.currentQuantity}</td>
+                    <td>${item.countedQuantity}</td>
+                    <td>${difference}</td>
+                    <td>${item.category}</td>
+                    <td>${item.supplier}</td>
+                    <td class="${statusClass}">${status}</td>
+                </tr>
+            `;
+        });
+        
+        pdfContent += `
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+
+        // Save inventory to database
+        this.saveInventoryToDatabase();
+
+        // Create PDF using browser print functionality
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(pdfContent);
+        printWindow.document.close();
+        
+        // Wait for content to load then print
+        printWindow.onload = function() {
+            printWindow.print();
+            printWindow.close();
+        };
+
+        this.showNotification(this.getTranslation('inventoryExportedPDF'), 'success');
+    }
+
+    saveInventoryToDatabase() {
+        if (!this.inventoryData || this.inventoryData.length === 0) return;
+
+        const inventoryRecord = {
+            id: Date.now().toString(),
+            date: new Date().toISOString(),
+            summary: this.calculateInventorySummary(),
+            items: this.inventoryData,
+            totalProducts: this.inventoryData.length,
+            differences: this.inventoryData.filter(item => item.status === 'difference').length,
+            matches: this.inventoryData.filter(item => item.status === 'match').length,
+            pending: this.inventoryData.filter(item => item.status === 'pending').length
+        };
+
+        // Save to localStorage for now (in real app, save to database)
+        let savedInventories = JSON.parse(localStorage.getItem('savedInventories') || '[]');
+        savedInventories.push(inventoryRecord);
+        localStorage.setItem('savedInventories', JSON.stringify(savedInventories));
+    }
+
+    loadSavedInventories() {
+        const savedInventories = JSON.parse(localStorage.getItem('savedInventories') || '[]');
+        return savedInventories.sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    showSavedInventories() {
+        const savedInventories = this.loadSavedInventories();
+        const inventoryList = document.getElementById('inventory-list');
+        
+        if (savedInventories.length === 0) {
+            inventoryList.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-history"></i>
+                    <p>${this.getTranslation('noSavedInventories')}</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="saved-inventories-header">
+                <h3>Uložené inventúry</h3>
+                <button class="btn btn-sm btn-danger" onclick="app.clearSavedInventories()">
+                    <i class="fas fa-trash"></i> Vymazať všetky
+                </button>
+            </div>
+        `;
+
+        savedInventories.forEach(inventory => {
+            const date = new Date(inventory.date).toLocaleDateString('sk-SK');
+            const time = new Date(inventory.date).toLocaleTimeString('sk-SK');
+            
+            html += `
+                <div class="saved-inventory-item">
+                    <div class="saved-inventory-header">
+                        <div class="saved-inventory-info">
+                            <h4>Inventúra z ${date} ${time}</h4>
+                            <div class="saved-inventory-stats">
+                                <span class="stat-item">
+                                    <i class="fas fa-box"></i> ${inventory.totalProducts} produktov
+                                </span>
+                                <span class="stat-item match">
+                                    <i class="fas fa-check"></i> ${inventory.matches} zhodné
+                                </span>
+                                <span class="stat-item difference">
+                                    <i class="fas fa-exclamation-triangle"></i> ${inventory.differences} rozdiely
+                                </span>
+                                <span class="stat-item pending">
+                                    <i class="fas fa-clock"></i> ${inventory.pending} nezačítané
+                                </span>
+                            </div>
+                        </div>
+                        <div class="saved-inventory-actions">
+                            <button class="btn btn-sm btn-info" onclick="app.viewSavedInventory('${inventory.id}')" title="Zobraziť">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-success" onclick="app.exportSavedInventory('${inventory.id}')" title="Exportovať">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="app.deleteSavedInventory('${inventory.id}')" title="Vymazať">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        inventoryList.innerHTML = html;
+    }
+
+    viewSavedInventory(inventoryId) {
+        const savedInventories = this.loadSavedInventories();
+        const inventory = savedInventories.find(inv => inv.id === inventoryId);
+        
+        if (!inventory) {
+            this.showNotification(this.getTranslation('inventoryNotFound'), 'error');
+            return;
+        }
+
+        // Load inventory data for viewing
+        this.inventoryData = inventory.items;
+        this.inventoryActive = true;
+        this.renderInventory();
+        this.updateInventoryControls();
+        
+        this.showNotification(this.getTranslation('inventoryLoaded'), 'success');
+    }
+
+    exportSavedInventory(inventoryId) {
+        const savedInventories = this.loadSavedInventories();
+        const inventory = savedInventories.find(inv => inv.id === inventoryId);
+        
+        if (!inventory) {
+            this.showNotification(this.getTranslation('inventoryNotFound'), 'error');
+            return;
+        }
+
+        // Temporarily set inventory data and export
+        const originalData = this.inventoryData;
+        this.inventoryData = inventory.items;
+        this.exportInventory();
+        this.inventoryData = originalData;
+    }
+
+    deleteSavedInventory(inventoryId) {
+        if (!confirm(this.getTranslation('confirmDeleteInventory'))) return;
+
+        let savedInventories = this.loadSavedInventories();
+        savedInventories = savedInventories.filter(inv => inv.id !== inventoryId);
+        localStorage.setItem('savedInventories', JSON.stringify(savedInventories));
+        
+        this.showSavedInventories();
+        this.showNotification(this.getTranslation('inventoryDeleted'), 'success');
+    }
+
+    clearSavedInventories() {
+        if (!confirm(this.getTranslation('confirmClearInventories'))) return;
+
+        localStorage.removeItem('savedInventories');
+        this.showSavedInventories();
+        this.showNotification(this.getTranslation('allInventoriesDeleted'), 'success');
+    }
+
+    finishInventory() {
+        if (!this.inventoryData || this.inventoryData.length === 0) {
+            this.showNotification(this.getTranslation('noInventoryData'), 'warning');
+            return;
+        }
+
+        const differences = this.inventoryData.filter(item => item.status === 'difference');
+        
+        if (differences.length > 0) {
+            const confirmMessage = this.getTranslation('confirmFinishInventory').replace('{count}', differences.length);
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+        }
+
+        // Apply inventory differences to database
+        differences.forEach(async (item) => {
+            try {
+                const difference = item.countedQuantity - item.currentQuantity;
+                const type = difference > 0 ? 'in' : 'out';
+                const quantity = Math.abs(difference);
+                
+                await window.electronAPI.updateStock(item.id, quantity, type, {
+                    reference: 'Inventúra',
+                    notes: `Korekcia inventúry: ${item.currentQuantity} → ${item.countedQuantity}`
+                });
+            } catch (error) {
+                console.error('Error updating stock for inventory:', error);
+            }
+        });
+
+        // Reset inventory
+        this.inventoryData = [];
+        this.inventoryActive = false;
+        this.renderInventory();
+        this.updateInventoryControls();
+        
+        // Reload products to reflect changes
+        this.loadInitialData();
+        
+        this.showNotification(this.getTranslation('inventoryFinished'), 'success');
     }
 }
 

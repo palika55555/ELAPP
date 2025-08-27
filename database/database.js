@@ -236,13 +236,30 @@ class DatabaseManager {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     this.run(sql, [
-      id, product.name, product.sku, product.plu, product.description, product.category_id,
-      product.supplier_id, product.price, product.price_with_vat || 0, product.cost, product.cost_with_vat || 0, product.vat_rate || 23, product.quantity, product.unit
+      id, 
+      product.name || '', 
+      product.sku || '', 
+      product.plu || '', 
+      product.description || '', 
+      product.category_id || null,
+      product.supplier_id || null, 
+      product.price || 0, 
+      product.price_with_vat || 0, 
+      product.cost || 0, 
+      product.cost_with_vat || 0, 
+      product.vat_rate || 23, 
+      product.quantity || 0, 
+      product.unit || 'ks'
     ]);
     return id;
   }
 
   checkEanAvailability(ean, excludeId = null) {
+    // If EAN is empty or null, it's always available
+    if (!ean || ean.trim() === '') {
+      return true;
+    }
+    
     let query = 'SELECT COUNT(*) as count FROM products WHERE sku = ?';
     let params = [ean];
     
@@ -263,8 +280,20 @@ class DatabaseManager {
       WHERE id = ?
     `;
     this.run(sql, [
-      product.name, product.sku, product.plu, product.description, product.category_id,
-      product.supplier_id, product.price, product.price_with_vat || 0, product.cost, product.cost_with_vat || 0, product.vat_rate || 23, product.quantity, product.unit, product.id
+      product.name || '', 
+      product.sku || '', 
+      product.plu || '', 
+      product.description || '', 
+      product.category_id || null,
+      product.supplier_id || null, 
+      product.price || 0, 
+      product.price_with_vat || 0, 
+      product.cost || 0, 
+      product.cost_with_vat || 0, 
+      product.vat_rate || 23, 
+      product.quantity || 0, 
+      product.unit || 'ks', 
+      product.id
     ]);
     return product.id;
   }
@@ -395,7 +424,7 @@ class DatabaseManager {
       FROM products p
       LEFT JOIN categories c ON p.category_id = c.id
       LEFT JOIN suppliers s ON p.supplier_id = s.id
-      WHERE p.name LIKE ? OR p.sku LIKE ? OR p.description LIKE ?
+      WHERE LOWER(p.name) LIKE LOWER(?) OR LOWER(p.sku) LIKE LOWER(?) OR LOWER(p.description) LIKE LOWER(?)
       ORDER BY p.name
     `;
     const term = `%${searchTerm}%`;
@@ -405,7 +434,7 @@ class DatabaseManager {
   searchSuppliers(searchTerm) {
     const sql = `
       SELECT * FROM suppliers
-      WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? OR address LIKE ? OR ico LIKE ? OR dic LIKE ?
+      WHERE LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR LOWER(phone) LIKE LOWER(?) OR LOWER(address) LIKE LOWER(?) OR LOWER(ico) LIKE LOWER(?) OR LOWER(dic) LIKE LOWER(?)
       ORDER BY name
     `;
     const term = `%${searchTerm}%`;

@@ -9,6 +9,9 @@
 </head>
 <body>
     <div class="app-container">
+        <!-- Sidebar Overlay -->
+        <div class="sidebar-overlay" onclick="app.toggleSidebar()"></div>
+        
         <!-- Sidebar -->
         <nav class="sidebar">
             <div class="sidebar-header">
@@ -50,6 +53,14 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Mobile Header -->
+            <div class="mobile-header">
+                <button class="hamburger-btn" onclick="app.toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 class="mobile-title">Inventory Management</h2>
+            </div>
+            
             <!-- Header -->
             <header class="header">
                 <div class="header-left">
@@ -347,6 +358,31 @@
                             <h3 id="low-stock-report-title">Low Stock Report</h3>
                             <div id="low-stock-report" class="report-content">
                                 <!-- Low stock report will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <h3 id="inventory-report-title">Inventúra produktov</h3>
+                            <div id="inventory-report" class="report-content">
+                                <div class="inventory-controls">
+                                    <button class="btn btn-primary" onclick="app.startInventory()">
+                                        <i class="fas fa-clipboard-list"></i> Spustiť inventúru
+                                    </button>
+                                    <button class="btn btn-success" onclick="app.exportInventory()" style="display: none;">
+                                        <i class="fas fa-download"></i> Exportovať do Excel
+                                    </button>
+                                    <button class="btn btn-info" onclick="app.exportInventoryToPDF()" style="display: none;">
+                                        <i class="fas fa-file-pdf"></i> Exportovať do PDF
+                                    </button>
+                                    <button class="btn btn-warning" onclick="app.finishInventory()" style="display: none;">
+                                        <i class="fas fa-check"></i> Dokončiť inventúru
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="app.showSavedInventories()">
+                                        <i class="fas fa-history"></i> Uložené inventúry
+                                    </button>
+                                </div>
+                                <div id="inventory-list" class="inventory-list">
+                                    <!-- Inventory items will be loaded here -->
+                                </div>
                             </div>
                         </div>
                     </div>
