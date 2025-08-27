@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-app",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Desktop inventory management application built with Electron",
   "main": "main.js",
   "scripts": {
@@ -52,7 +52,8 @@
               "win": {
             "target": "nsis",
             "icon": "assets/icon.ico",
-            "sign": false
+            "sign": false,
+            "signAndEditExecutable": false
           },
     "mac": {
       "target": "dmg",
