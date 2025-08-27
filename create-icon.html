@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .icon-container {
+            width: 256px;
+            height: 256px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            margin: 20px auto;
+        }
+        .warehouse {
+            width: 120px;
+            height: 80px;
+            background: white;
+            border: 3px solid #333;
+            position: relative;
+            border-radius: 4px;
+        }
+        .roof {
+            position: absolute;
+            top: -20px;
+            left: -10px;
+            width: 140px;
+            height: 20px;
+            background: white;
+            border: 3px solid #333;
+            border-bottom: none;
+            clip-path: polygon(0 100%, 50% 0, 100% 100%);
+        }
+        .door {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 40px;
+            background: #667eea;
+            border: 2px solid #333;
+            border-bottom: none;
+        }
+        .window {
+            position: absolute;
+            top: 15px;
+            width: 15px;
+            height: 15px;
+            background: #87ceeb;
+            border: 2px solid #333;
+        }
+        .window.left {
+            left: 10px;
+        }
+        .window.right {
+            right: 10px;
+        }
+        .boxes {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        .box {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #333;
+        }
+        .box.yellow { background: #ffd700; }
+        .box.red { background: #ff6b6b; }
+        .box.blue { background: #4ecdc4; }
+        .box.green { background: #a8e6cf; }
+        .plus {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            background: #28a745;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .text {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="icon-container">
+        <div class="warehouse">
+            <div class="roof"></div>
+            <div class="door"></div>
+            <div class="window left"></div>
+            <div class="window right"></div>
+            <div class="boxes">
+                <div class="box yellow"></div>
+                <div class="box red"></div>
+                <div class="box blue"></div>
+                <div class="box green"></div>
+            </div>
+        </div>
+        <div class="plus">+</div>
+        <div class="text">INVENTORY</div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+        <p>Kliknite pravým tlačidlom myši na ikonu a vyberte "Uložiť obrázok ako..."</p>
+        <p>Uložte ako PNG a potom premenujte na icon.ico</p>
+    </div>
+</body>
+</html>

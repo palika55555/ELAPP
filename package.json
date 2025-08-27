@@ -1,0 +1,62 @@
+{
+  "name": "inventory-management-app",
+  "version": "1.0.0",
+  "description": "Desktop inventory management application built with Electron",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder",
+    "dist": "electron-builder --publish=never",
+    "publish": "electron-builder --publish=always"
+  },
+  "keywords": [
+    "electron",
+    "inventory",
+    "management",
+    "desktop",
+    "sqlite"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "electron-updater": "^6.6.2",
+    "sqlite3": "^5.1.6",
+    "uuid": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.inventory.app",
+    "productName": "Inventory Management",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/**/*",
+      "!dist/**/*"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "palika55555",
+      "repo": "ELAPP",
+      "private": true
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  }
+}

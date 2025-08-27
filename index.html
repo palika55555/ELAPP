@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Inventory Management System</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <img src="assets/problock.webp" alt="ProbLock Logo" class="logo">
+                </div>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item active" data-page="dashboard" data-tooltip="Dashboard">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span data-translate="dashboard">Dashboard</span>
+                </li>
+                <li class="nav-item" data-page="products" data-tooltip="Products">
+                    <i class="fas fa-box"></i>
+                    <span data-translate="products">Products</span>
+                </li>
+                <li class="nav-item" data-page="categories" data-tooltip="Categories">
+                    <i class="fas fa-tags"></i>
+                    <span data-translate="categories">Categories</span>
+                </li>
+                <li class="nav-item" data-page="suppliers" data-tooltip="Suppliers">
+                    <i class="fas fa-truck"></i>
+                    <span data-translate="suppliers">Suppliers</span>
+                </li>
+                <li class="nav-item" data-page="stock" data-tooltip="Stock Management">
+                    <i class="fas fa-warehouse"></i>
+                    <span data-translate="stock">Stock Management</span>
+                </li>
+                <li class="nav-item" data-page="reports" data-tooltip="Reports">
+                    <i class="fas fa-chart-bar"></i>
+                    <span data-translate="reports">Reports</span>
+                </li>
+                <li class="nav-item" data-page="settings" data-tooltip="Settings">
+                    <i class="fas fa-cog"></i>
+                    <span data-translate="settings">Nastavenia</span>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-left">
+                    <h1 id="page-title">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="search-input" placeholder="Search products..." data-translate-placeholder="searchProducts">
+                    </div>
+                    <button class="btn btn-primary" id="add-product-btn">
+                        <i class="fas fa-plus"></i> <span data-translate="addProduct">Add Product</span>
+                    </button>
+                    <button class="btn btn-primary" id="add-supplier-btn" style="display: none;">
+                        <i class="fas fa-plus"></i> <span data-translate="addSupplier">Add Supplier</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-box"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="total-products">0</h3>
+                                <p id="total-products-label" data-translate="totalProducts">Total Products</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="total-value">€0</h3>
+                                <p id="total-value-label" data-translate="totalValue">Total Value</p>
+                            </div>
+                        </div>
+                        <div class="stat-card warning">
+                            <div class="stat-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="low-stock-count">0</h3>
+                                <p id="low-stock-label" data-translate="lowStock">Low Stock</p>
+                            </div>
+                        </div>
+                        <div class="stat-card danger">
+                            <div class="stat-icon">
+                                <i class="fas fa-times-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <h3 id="out-of-stock-count">0</h3>
+                                <p id="out-of-stock-label" data-translate="outOfStock">Out of Stock</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <h3 id="recent-movements-title" data-translate="recentMovements">Recent Stock Movements</h3>
+                            <div id="recent-movements" class="movements-list">
+                                <!-- Recent movements will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="dashboard-card">
+                            <h3 id="low-stock-alerts-title" data-translate="lowStockAlerts">Low Stock Alerts</h3>
+                            <div id="low-stock-alerts" class="alerts-list">
+                                <!-- Low stock alerts will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Enhancements -->
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card" id="top-products">
+                            <h3 data-translate="topProducts">Top produkty podľa hodnoty</h3>
+                            <div id="top-products-list" class="top-products-list">
+                                <!-- Top products will be loaded here -->
+                            </div>
+                        </div>
+                        <div class="dashboard-card" id="category-stats">
+                            <h3 data-translate="categoryStats">Štatistiky kategórií</h3>
+                            <div id="category-stats-list" class="category-stats-list">
+                                <!-- Category stats will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card" id="quick-actions">
+                            <h3 data-translate="quickActions">Rýchle akcie</h3>
+                            <div class="quick-actions-grid">
+                                <!-- Quick actions will be loaded here -->
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- Products Page -->
+                <div id="products-page" class="page">
+                    <div class="page-header">
+                        <div class="page-actions">
+                            <button class="btn btn-primary" id="new-product-btn">
+                                <i class="fas fa-plus"></i> <span id="new-product-text" data-translate="newProduct">New Product</span>
+                            </button>
+                            <button class="btn btn-secondary" id="export-products-btn">
+                                <i class="fas fa-download"></i> <span id="export-text" data-translate="export">Export</span>
+                            </button>
+                            <button class="btn btn-secondary" id="import-products-btn">
+                                <i class="fas fa-upload"></i> <span id="import-text" data-translate="import">Import</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Filtering Section -->
+                    <div class="advanced-filters">
+                        <div class="filter-header">
+                            <h3><i class="fas fa-filter"></i> <span data-translate="advancedFilters">Pokročilé filtrovanie</span></h3>
+                            <button class="btn btn-sm btn-secondary" id="toggle-filters">
+                                <i class="fas fa-chevron-down"></i> <span data-translate="showFilters">Zobraziť filtre</span>
+                            </button>
+                        </div>
+                        
+                        <div class="filter-content" id="filter-content">
+                            <div class="filter-grid">
+                                <!-- Search Filter -->
+                                <div class="filter-group">
+                                    <label for="filter-search" data-translate="searchProducts">Hľadať produkty</label>
+                                    <input type="text" id="filter-search" class="form-control" placeholder="Názov, EAN, PLU...">
+                                </div>
+                                
+                                <!-- Category Filter -->
+                                <div class="filter-group">
+                                    <label for="filter-category" data-translate="category">Kategória</label>
+                                    <select id="filter-category" class="form-control">
+                                        <option value="" data-translate="allCategories">Všetky kategórie</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Supplier Filter -->
+                                <div class="filter-group">
+                                    <label for="filter-supplier" data-translate="supplier">Dodávateľ</label>
+                                    <select id="filter-supplier" class="form-control">
+                                        <option value="" data-translate="allSuppliers">Všetci dodávatelia</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Status Filter -->
+                                <div class="filter-group">
+                                    <label for="filter-status" data-translate="status">Stav</label>
+                                    <select id="filter-status" class="form-control">
+                                        <option value="" data-translate="allStatuses">Všetky stavy</option>
+                                        <option value="in-stock" data-translate="inStock">Na sklade</option>
+                                        <option value="low-stock" data-translate="lowStockStatus">Nízky</option>
+                                        <option value="out-of-stock" data-translate="outOfStockStatus">Vypredané</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Price Range Filter -->
+                                <div class="filter-group">
+                                    <label for="filter-price-min" data-translate="priceRange">Rozsah ceny</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="filter-price-min" class="form-control" placeholder="Min" step="0.01" min="0">
+                                        <span class="range-separator">-</span>
+                                        <input type="number" id="filter-price-max" class="form-control" placeholder="Max" step="0.01" min="0">
+                                    </div>
+                                </div>
+                                
+                                <!-- Quantity Range Filter -->
+                                <div class="filter-group">
+                                    <label for="filter-quantity-min" data-translate="quantityRange">Rozsah množstva</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="filter-quantity-min" class="form-control" placeholder="Min" min="0">
+                                        <span class="range-separator">-</span>
+                                        <input type="number" id="filter-quantity-max" class="form-control" placeholder="Max" min="0">
+                                    </div>
+                                </div>
+                                
+                                <!-- Margin Range Filter -->
+                                <div class="filter-group">
+                                    <label for="filter-margin-min" data-translate="marginRange">Rozsah marže</label>
+                                    <div class="range-inputs">
+                                        <input type="number" id="filter-margin-min" class="form-control" placeholder="Min %" min="0" max="100">
+                                        <span class="range-separator">-</span>
+                                        <input type="number" id="filter-margin-max" class="form-control" placeholder="Max %" min="0" max="100">
+                                    </div>
+                                </div>
+                                
+                                <!-- Sort Options -->
+                                <div class="filter-group">
+                                    <label for="filter-sort" data-translate="sortBy">Zoradiť podľa</label>
+                                    <select id="filter-sort" class="form-control">
+                                        <option value="name" data-translate="sortByName">Názov (A-Z)</option>
+                                        <option value="name-desc" data-translate="sortByNameDesc">Názov (Z-A)</option>
+                                        <option value="price" data-translate="sortByPrice">Cena (najnižšia)</option>
+                                        <option value="price-desc" data-translate="sortByPriceDesc">Cena (najvyššia)</option>
+                                        <option value="quantity" data-translate="sortByQuantity">Množstvo (najnižšie)</option>
+                                        <option value="quantity-desc" data-translate="sortByQuantityDesc">Množstvo (najvyššie)</option>
+                                        <option value="margin" data-translate="sortByMargin">Marža (najnižšia)</option>
+                                        <option value="margin-desc" data-translate="sortByMarginDesc">Marža (najvyššia)</option>
+                                        <option value="updated" data-translate="sortByUpdated">Posledná aktualizácia</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="filter-actions">
+                                <button class="btn btn-primary" id="apply-filters">
+                                    <i class="fas fa-search"></i> <span data-translate="applyFilters">Aplikovať filtre</span>
+                                </button>
+                                <button class="btn btn-secondary" id="clear-filters">
+                                    <i class="fas fa-times"></i> <span data-translate="clearFilters">Vyčistiť filtre</span>
+                                </button>
+                                <button class="btn btn-info" id="save-filters">
+                                    <i class="fas fa-save"></i> <span data-translate="saveFilters">Uložiť filtre</span>
+                                </button>
+                            </div>
+                            
+                            <div class="filter-results">
+                                <span id="filter-results-count" data-translate="showingResults">Zobrazuje sa 0 z 0 produktov</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Column Visibility Controls -->
+                    <div class="table-controls">
+                        <div class="column-visibility-dropdown">
+                            <button class="btn btn-sm btn-secondary dropdown-toggle" id="column-toggle-btn">
+                                <i class="fas fa-columns"></i> <span data-translate="columns">Stĺpce</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="dropdown-menu" id="column-visibility-menu">
+                                <div class="dropdown-header">
+                                    <span data-translate="columnVisibility">Zobrazenie stĺpcov</span>
+                                </div>
+                                <div class="column-options">
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="name" checked>
+                                        <span data-translate="productName">Názov produktu</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="sku" checked>
+                                        <span>EAN</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="plu" checked>
+                                        <span>PLU</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="category" checked>
+                                        <span data-translate="category">Kategória</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="supplier" checked>
+                                        <span data-translate="supplier">Dodávateľ</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="quantity" checked>
+                                        <span data-translate="quantity">Množstvo</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="price" checked>
+                                        <span data-translate="sellingPriceWithoutVAT">Predaj bez DPH</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="price_with_vat" checked>
+                                        <span data-translate="sellingPriceWithVAT">Predaj s DPH</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="cost" checked>
+                                        <span data-translate="cost">Nákup bez DPH</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="cost_with_vat" checked>
+                                        <span data-translate="costWithVAT">Nákup s DPH</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="margin" checked>
+                                        <span data-translate="margin">Marža</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="status" checked>
+                                        <span data-translate="status">Stav</span>
+                                    </label>
+                                    <label class="column-option">
+                                        <input type="checkbox" data-column="actions" checked>
+                                        <span data-translate="actions">Akcie</span>
+                                    </label>
+                                </div>
+                                <div class="dropdown-actions">
+                                    <button class="btn btn-sm btn-primary" id="show-all-columns">
+                                        <span data-translate="showAll">Zobraziť všetky</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-secondary" id="hide-all-columns">
+                                        <span data-translate="hideAll">Skryť všetky</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-container">
+                        <table class="data-table" id="products-table">
+                            <thead>
+                                <tr>
+                                    <th id="product-name-header" data-translate="name">Name</th>
+                                    <th id="product-sku-header" data-translate="ean" style="display: none;">EAN</th>
+                                    <th id="product-plu-header" data-translate="plu">PLU</th>
+                                    <th id="product-category-header" data-translate="category">Category</th>
+                                    <th id="product-supplier-header" data-translate="supplier">Dodávateľ</th>
+                                    <th id="product-quantity-header" data-translate="quantity">Quantity</th>
+                                    <th id="product-selling-price-header" data-translate="sellingPriceWithoutVAT">Predaj bez DPH</th>
+                                    <th id="product-selling-price-with-vat-header" data-translate="sellingPriceWithVAT">Predaj s DPH</th>
+                                    <th id="product-cost-header" data-translate="cost">Nákup bez DPH</th>
+                                    <th id="product-cost-with-vat-header" data-translate="costWithVAT">Nákup s DPH</th>
+                                    <th id="product-margin-header" data-translate="margin">Marža</th>
+                                    <th id="product-status-header" data-translate="status">Status</th>
+                                    <th id="product-actions-header" data-translate="actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-tbody">
+                                <!-- Products will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Categories Page -->
+                <div id="categories-page" class="page">
+                    <div class="page-header">
+                        <button class="btn btn-primary" id="new-category-btn">
+                            <i class="fas fa-plus"></i> <span id="new-category-text" data-translate="newCategory">Nová kategória</span>
+                        </button>
+                    </div>
+                    <div class="categories-grid" id="categories-grid">
+                        <!-- Categories will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Suppliers Page -->
+                <div id="suppliers-page" class="page">
+                    <div class="page-header">
+                        <button class="btn btn-primary" id="new-supplier-btn">
+                            <i class="fas fa-plus"></i> <span id="new-supplier-text" data-translate="newSupplier">Nový dodávateľ</span>
+                        </button>
+                    </div>
+                    <div class="suppliers-content-container">
+                        <div id="suppliers-cards-container" class="suppliers-cards-container">
+                            <!-- Suppliers cards will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stock Management Page -->
+                <div id="stock-page" class="page">
+                    <div class="stock-actions">
+                        <button class="btn btn-success" id="stock-in-btn">
+                            <i class="fas fa-plus"></i> <span id="stock-in-text" data-translate="stockIn">Prijatie</span>
+                        </button>
+                        <button class="btn btn-warning" id="stock-out-btn">
+                            <i class="fas fa-minus"></i> <span id="stock-out-text" data-translate="stockOut">Výdaj</span>
+                        </button>
+                        <button class="btn btn-info" id="stock-adjustment-btn">
+                            <i class="fas fa-edit"></i> <span id="stock-adjustment-text" data-translate="stockAdjustment">Úprava</span>
+                        </button>
+                    </div>
+                    <div class="stock-content-container">
+                        <div id="stock-cards-container" class="stock-cards-container">
+                            <!-- Stock cards will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports Page -->
+                <div id="reports-page" class="page">
+                    <div class="reports-grid">
+                        <div class="report-card">
+                            <h3 id="stock-value-report-title">Stock Value Report</h3>
+                            <div id="stock-value-chart" class="chart-placeholder">
+                                <i class="fas fa-chart-pie"></i>
+                                <p id="chart-placeholder-text">Chart will be displayed here</p>
+                            </div>
+                        </div>
+                        <div class="report-card">
+                            <h3 id="low-stock-report-title">Low Stock Report</h3>
+                            <div id="low-stock-report" class="report-content">
+                                <!-- Low stock report will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Page -->
+                <div id="settings-page" class="page">
+                    <div class="settings-container">
+                        <div class="settings-section">
+                            <h3><i class="fas fa-palette"></i> Vzhľad</h3>
+                            <div class="setting-item">
+                                <label for="theme-select">Motív:</label>
+                                <select id="theme-select" class="form-control">
+                                    <option value="light">Svetlý</option>
+                                    <option value="dark">Tmavý</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="settings-section">
+                            <h3><i class="fas fa-language"></i> Jazyk</h3>
+                            <div class="setting-item">
+                                <label for="language-select">Jazyk aplikácie:</label>
+                                <select id="language-select" class="form-control">
+                                    <option value="sk">Slovenský</option>
+                                    <option value="en">English</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-info-circle"></i> Informácie o aplikácii</h3>
+                            <div class="app-info">
+                                <p><strong>Názov:</strong> Systém správy skladu</p>
+                                <p><strong>Verzia:</strong> 1.0.0</p>
+                                <p><strong>Autor:</strong> Inventory Management System</p>
+                            </div>
+                        </div>
+
+                        <!-- System Information Section -->
+                        <div class="settings-section">
+                            <h3><i class="fas fa-server"></i> Systémové informácie</h3>
+                            <div class="system-info">
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <label>Celkový počet produktov:</label>
+                                        <span id="system-total-products">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Počet kategórií:</label>
+                                        <span id="system-total-categories">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Počet dodávateľov:</label>
+                                        <span id="system-total-suppliers">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Celková hodnota skladu:</label>
+                                        <span id="system-total-stock-value">-</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>Produkty s nízkym stavom:</label>
+                                        <span id="system-low-stock-count">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-database"></i> Databáza</h3>
+                            <div class="database-actions">
+                                <button class="btn btn-warning" onclick="app.resetDatabase()">
+                                    <i class="fas fa-trash"></i> Reset databázy
+                                </button>
+                                <p class="warning-text">⚠️ Pozor: Toto vymaže všetky dáta a vytvorí novú databázu!</p>
+                            </div>
+                        </div>
+
+                        <!-- Backup Settings Section -->
+                        <!-- Update Section -->
+                        <div class="settings-section">
+                            <h3><i class="fas fa-download"></i> Aktualizácie aplikácie</h3>
+                            <div class="update-info">
+                                <div class="info-item">
+                                    <label>Aktuálna verzia:</label>
+                                    <span id="current-version">1.0.0</span>
+                                </div>
+                                <div class="info-item">
+                                    <label>Stav aktualizácií:</label>
+                                    <span id="update-status">Kontrolujem...</span>
+                                </div>
+                            </div>
+                            <div class="update-actions">
+                                <button id="check-updates-btn" class="btn btn-secondary" onclick="app.checkForUpdates()">
+                                    <i class="fas fa-sync"></i> Kontrolovať aktualizácie
+                                </button>
+                                <div id="update-progress" class="update-progress" style="display: none;">
+                                    <div class="update-progress-bar" style="width: 0%">0%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3 data-translate="backupSettings">Nastavenia zálohovania</h3>
+                            <div class="setting-item">
+                                <label for="backup-path" data-translate="backupPath">Cesta k zálohám</label>
+                                <input type="text" id="backup-path" value="C:\Users\domonkos\APPBACKUP" readonly>
+                                <button type="button" id="change-backup-path" class="btn btn-sm btn-secondary" data-translate="changeBackupPath">Zmeniť cestu</button>
+                            </div>
+                            <div class="setting-item">
+                                <label>
+                                    <input type="checkbox" id="auto-backup-enabled" checked>
+                                    <span data-translate="autoBackupEnabled">Automatické zálohovanie</span>
+                                </label>
+                                <div class="setting-description" data-translate="autoBackupDescription">Zálohovať automaticky pri každom spustení aplikácie</div>
+                            </div>
+                            <div class="setting-item">
+                                <label for="backup-retention-days" data-translate="backupRetentionDays">Uchovávať zálohy (dni)</label>
+                                <input type="number" id="backup-retention-days" value="30" min="1" max="365">
+                                <div class="setting-description" data-translate="backupRetentionDescription">Staršie zálohy sa automaticky vymažú</div>
+                            </div>
+                            <div class="setting-item">
+                                <label for="backup-compression" data-translate="backupCompression">Kompresia záloh</label>
+                                <select id="backup-compression">
+                                    <option value="none" data-translate="noCompression">Bez kompresie</option>
+                                    <option value="zip" data-translate="zipCompression">ZIP kompresia</option>
+                                </select>
+                                <div class="setting-description" data-translate="backupCompressionDescription">Zmenšiť veľkosť zálohových súborov</div>
+                            </div>
+                            <div class="setting-item">
+                                <label>
+                                    <input type="checkbox" id="backup-notifications" checked>
+                                    <span data-translate="backupNotifications">Notifikácie o zálohovaní</span>
+                                </label>
+                                <div class="setting-description" data-translate="backupNotificationsDescription">Zobrazovať upozornenia o úspešnom zálohovaní</div>
+                            </div>
+                            <div class="backup-actions">
+                                <button type="button" id="test-backup-path" class="btn btn-warning" data-translate="testBackupPath">Testovať cestu</button>
+                                <button type="button" id="cleanup-old-backups" class="btn btn-info" data-translate="cleanupOldBackups">Vyčistiť staré zálohy</button>
+                                <button type="button" id="view-backup-folder" class="btn btn-secondary" data-translate="viewBackupFolder">Zobraziť priečinok</button>
+                            </div>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button class="btn btn-primary" id="save-settings">
+                                <i class="fas fa-save"></i> Uložiť nastavenia
+                            </button>
+                            <button class="btn btn-secondary" id="reset-settings">
+                                <i class="fas fa-undo"></i> Obnoviť predvolené
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content product-modal-small">
+            <div class="modal-header">
+                <h2 id="product-modal-title">Pridať nový produkt</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="product-form">
+                <!-- ZÁKLADNÉ INFORMÁCIE -->
+                <div class="form-grid-compact">
+                    <div class="form-group">
+                        <label for="product-name" id="product-name-label" data-translate="productName">Názov produktu *</label>
+                        <input type="text" id="product-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-ean" id="product-ean-label" data-translate="ean">EAN *</label>
+                        <input type="text" id="product-ean" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-plu" id="product-plu-label" data-translate="plu">PLU</label>
+                        <input type="text" id="product-plu">
+                    </div>
+                    <div class="form-group">
+                        <label for="product-category" id="product-category-label" data-translate="category">Kategória</label>
+                        <select id="product-category">
+                            <option value="" id="select-category-option" data-translate="selectCategory">Vybrať kategóriu</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-supplier" id="product-supplier-label" data-translate="supplier">Dodávateľ</label>
+                        <select id="product-supplier">
+                            <option value="" id="select-supplier-option" data-translate="selectSupplier">Vybrať dodávateľa</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="product-quantity" id="product-quantity-label" data-translate="initialQuantity">Množstvo</label>
+                        <input type="number" id="product-quantity" min="0" value="0">
+                    </div>
+                </div>
+                
+                <!-- NÁKUPNÁ CENA -->
+                <div class="form-section">
+                    <div class="form-section-title">Nákupná cena</div>
+                    <div class="form-grid-compact">
+                        <div class="form-group">
+                            <label for="product-cost" id="product-cost-label" data-translate="costWithoutVAT">Nákup bez DPH</label>
+                            <input type="number" id="product-cost" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="product-vat-rate" id="product-vat-rate-label" data-translate="vatRate">Sadzba DPH (%)</label>
+                            <select id="product-vat-rate" class="form-control">
+                                <option value="23" data-translate="vat23">23% (štandardná)</option>
+                                <option value="10" data-translate="vat10">10% (znížená)</option>
+                                <option value="5" data-translate="vat5">5% (znížená)</option>
+                                <option value="0" data-translate="vat0">0% (nulová)</option>
+                                <option value="custom" data-translate="vatCustom">Vlastná sadzba</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="custom-vat-group" style="display: none;">
+                            <label for="product-custom-vat" id="product-custom-vat-label" data-translate="customVatRate">Vlastná sadzba DPH (%)</label>
+                            <input type="number" id="product-custom-vat" step="0.01" min="0" max="100" placeholder="Zadajte sadzbu">
+                        </div>
+                        <div class="form-group">
+                            <label for="product-cost-with-vat" id="product-cost-with-vat-label" data-translate="costWithVAT">Nákup s DPH</label>
+                            <input type="number" id="product-cost-with-vat" step="0.01" min="0" readonly>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- PREDAJNÁ CENA -->
+                <div class="form-section">
+                    <div class="form-section-title">Predajná cena</div>
+                    <div class="form-grid-compact">
+                        <div class="form-group">
+                            <label for="product-selling-price-with-vat" id="product-selling-price-with-vat-label" data-translate="sellingPriceWithVAT">Predaj s DPH</label>
+                            <input type="number" id="product-selling-price-with-vat" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="product-selling-price" id="product-selling-price-label" data-translate="sellingPriceWithoutVAT">Predaj bez DPH</label>
+                            <input type="number" id="product-selling-price" step="0.01" min="0" readonly>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- POPIS -->
+                <div class="form-group full-width">
+                    <label for="product-description" id="product-description-label" data-translate="description">Popis</label>
+                    <textarea id="product-description" rows="2"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-product" data-translate="cancel">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary" id="save-product-btn" data-translate="saveProduct">Uložiť produkt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Stock Movement Modal -->
+    <div id="stock-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="stock-modal-title">Stock Movement</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="stock-form">
+                <div class="form-group">
+                    <label for="stock-product" id="stock-product-label">Product</label>
+                    <select id="stock-product" required>
+                        <option value="" id="select-product-option">Select Product</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stock-quantity" id="stock-quantity-label">Quantity</label>
+                    <input type="number" id="stock-quantity" required min="1">
+                </div>
+                
+                <!-- Additional fields for stock in -->
+                <div id="stock-in-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="stock-cost-without-vat" id="stock-cost-without-vat-label">Nákup bez DPH (€)</label>
+                        <input type="number" id="stock-cost-without-vat" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="stock-vat-rate" id="stock-vat-rate-label">Sadzba DPH (%)</label>
+                        <select id="stock-vat-rate">
+                            <option value="0">0%</option>
+                            <option value="5">5%</option>
+                            <option value="10">10%</option>
+                            <option value="23" selected>23%</option>
+                            <option value="custom">Vlastná sadzba</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="stock-custom-vat-group" style="display: none;">
+                        <label for="stock-custom-vat-rate" id="stock-custom-vat-rate-label">Vlastná sadzba DPH (%)</label>
+                        <input type="number" id="stock-custom-vat-rate" step="0.01" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="stock-vat-amount" id="stock-vat-amount-label">DPH (€)</label>
+                        <input type="number" id="stock-vat-amount" step="0.01" min="0" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="stock-cost-with-vat" id="stock-cost-with-vat-label">Nákup s DPH (€)</label>
+                        <input type="number" id="stock-cost-with-vat" step="0.01" min="0" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="stock-supplier" id="stock-supplier-label">Dodávateľ</label>
+                        <select id="stock-supplier">
+                            <option value="">Vyberte dodávateľa</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="stock-movement-date" id="stock-movement-date-label">Dátum príjmu</label>
+                        <input type="datetime-local" id="stock-movement-date">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="stock-notes" id="stock-notes-label">Notes</label>
+                    <textarea id="stock-notes" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-stock" data-translate="cancel">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary" id="save-movement-btn">Save Movement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Category Modal -->
+    <div id="category-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="category-modal-title" data-translate="addNewCategory">Pridať novú kategóriu</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="category-form">
+                <div class="form-group">
+                    <label for="category-name" id="category-name-label" data-translate="categoryName">Názov kategórie *</label>
+                    <input type="text" id="category-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="category-description" id="category-description-label" data-translate="description">Popis</label>
+                    <textarea id="category-description" rows="3"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-category" data-translate="cancel">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary" id="save-category-btn" data-translate="saveCategory">Uložiť kategóriu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Supplier Modal -->
+    <div id="supplier-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="supplier-modal-title" data-translate="addNewSupplier">Pridať nového dodávateľa</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="supplier-form">
+                <div class="form-group">
+                    <label for="supplier-name" id="supplier-name-label" data-translate="supplierName">Názov dodávateľa *</label>
+                    <input type="text" id="supplier-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="supplier-email" id="supplier-email-label">Email</label>
+                    <input type="email" id="supplier-email">
+                </div>
+                <div class="form-group">
+                    <label for="supplier-phone" id="supplier-phone-label">Phone</label>
+                    <input type="tel" id="supplier-phone">
+                </div>
+                <div class="form-group">
+                    <label for="supplier-address" id="supplier-address-label">Address</label>
+                    <textarea id="supplier-address" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="supplier-ico" id="supplier-ico-label" data-translate="ico">IČO</label>
+                    <input type="text" id="supplier-ico">
+                </div>
+                <div class="form-group">
+                    <label for="supplier-dic" id="supplier-dic-label" data-translate="dic">DIČ</label>
+                    <input type="text" id="supplier-dic">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-supplier" data-translate="cancel">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary" id="save-supplier-btn" data-translate="saveSupplier">Uložiť dodávateľa</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 data-translate="importProducts">Importovať produkty</h2>
+                <span class="close">&times;</span>
+            </div>
+            <form id="import-form">
+                <div class="form-group">
+                    <label for="import-file" data-translate="selectFile">Vybrať Excel/CSV súbor</label>
+                    <input type="file" id="import-file" accept=".csv,.xlsx,.xls" required>
+                </div>
+                
+                <div class="form-group">
+                    <h4 data-translate="importOptions">Logika importu</h4>
+                    <div class="import-info">
+                        <p><strong>Ak existuje produkt s EAN:</strong> Pridá sa množstvo k existujúcim zásobám</p>
+                        <p><strong>Ak neexistuje EAN:</strong> Pridá sa nový produkt</p>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <h4 data-translate="previewTitle">Náhľad (prvých 5 riadkov)</h4>
+                    <div id="import-preview" class="import-preview">
+                        <!-- Preview will be loaded here -->
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-import">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary" id="start-import-btn" data-translate="startImport">Spustiť import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="scripts/translations.js"></script>
+    <script src="scripts/app.js"></script>
+</body>
+</html>
