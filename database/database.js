@@ -12,10 +12,13 @@ class Database {
     return new Promise((resolve, reject) => {
       this.db = new sqlite3.Database(this.dbPath, (err) => {
         if (err) {
+          console.error('Database initialization error:', err);
           reject(err);
-          return;
+        } else {
+          this.createTables()
+            .then(() => resolve(true))
+            .catch(reject);
         }
-        this.createTables().then(resolve).catch(reject);
       });
     });
   }
@@ -49,9 +52,12 @@ class Database {
         category_id TEXT,
         supplier_id TEXT,
         price REAL DEFAULT 0,
+        price_with_vat REAL DEFAULT 0,
         cost REAL DEFAULT 0,
+        cost_with_vat REAL DEFAULT 0,
+        vat_rate REAL DEFAULT 23,
         quantity INTEGER DEFAULT 0,
-
+        reorder_level INTEGER DEFAULT 10,
         unit TEXT DEFAULT 'pcs',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
