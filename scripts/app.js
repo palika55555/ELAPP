@@ -1980,8 +1980,11 @@ class InventoryApp {
                 product.margin = parseFloat(product.margin.toString().replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
             }
             
-            // Skip empty products
-            if (product.name && product.sku) {
+            // Debug logging for description mapping
+            console.log(`Parsed product: ${product.name}, description: ${product.description || 'žiadny'}`);
+            
+            // Skip empty products - only name is required, EAN is optional
+            if (product.name && product.name.trim() !== '') {
                 products.push(product);
             }
         }
@@ -2008,7 +2011,7 @@ class InventoryApp {
                     ${products.map(product => `
                         <tr>
                             <td>${product.name || product['názov produktu'] || ''}</td>
-                            <td>${product.sku || product.ean || ''}</td>
+                            <td>${product.sku || product.ean || 'bez EAN'}</td>
                             <td>${product.plu || ''}</td>
                             <td>${product.category_name || product.kategória || ''}</td>
                             <td>${product.supplier_name || product.dodávateľ || ''}</td>
@@ -2101,6 +2104,7 @@ class InventoryApp {
                 const productEAN = product.sku || product.ean;
                 
                 console.log(`Processing product: ${productName} (EAN: ${productEAN})`);
+                console.log(`Product description from import: ${product.description || 'žiadny'}`);
                 
                 // Skip products with empty name
                 if (!productName || productName.trim() === '') {
@@ -2121,6 +2125,7 @@ class InventoryApp {
                     const newQuantity = currentQuantity + addQuantity;
                     
                     console.log(`Adding quantity to existing product ${existingProduct.name}: ${currentQuantity} + ${addQuantity} = ${newQuantity}`);
+                    console.log(`Updating description from '${existingProduct.description || 'žiadny'}' to '${product.description !== undefined ? product.description : existingProduct.description || 'žiadny'}'`);
                     
                     // Update product with new quantity and other fields if provided
                     const updatedProduct = {
@@ -2132,7 +2137,7 @@ class InventoryApp {
                         cost_with_vat: product.cost_with_vat || existingProduct.cost_with_vat,
                         category_name: product.category_name || existingProduct.category_name,
                         supplier_name: product.supplier_name || existingProduct.supplier_name,
-                        description: product.description || existingProduct.description
+                        description: product.description !== undefined ? product.description : existingProduct.description
                     };
                     
                     await window.electronAPI.updateProduct(updatedProduct);
@@ -2165,7 +2170,7 @@ class InventoryApp {
                         description: product.description || product.popis || ''
                     };
                     
-                    console.log(`Adding new product: ${newProduct.name} with EAN: ${newProduct.sku}`);
+                    console.log(`Adding new product: ${newProduct.name} with EAN: ${newProduct.sku || 'bez EAN'}, description: ${newProduct.description || 'žiadny'}`);
                     await window.electronAPI.addProduct(newProduct);
                     added++;
                 }
