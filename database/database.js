@@ -1,29 +1,25 @@
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-class Database {
+class DatabaseManager {
   constructor() {
     this.dbPath = path.join(__dirname, 'inventory.db');
     this.db = null;
   }
 
-  async initialize() {
-    return new Promise((resolve, reject) => {
-      this.db = new sqlite3.Database(this.dbPath, (err) => {
-        if (err) {
-          console.error('Database initialization error:', err);
-          reject(err);
-        } else {
-          this.createTables()
-            .then(() => resolve(true))
-            .catch(reject);
-        }
-      });
-    });
+  initialize() {
+    try {
+      this.db = new Database(this.dbPath);
+      this.createTables();
+      return true;
+    } catch (error) {
+      console.error('Database initialization error:', error);
+      throw error;
+    }
   }
 
-  async createTables() {
+  createTables() {
     const tables = [
       `CREATE TABLE IF NOT EXISTS categories (
         id TEXT PRIMARY KEY,
@@ -83,17 +79,17 @@ class Database {
     ];
 
     for (const table of tables) {
-      await this.run(table);
+      this.run(table);
     }
 
     // Insert default categories
-    await this.insertDefaultData();
+    this.insertDefaultData();
     
     // Run migrations
-    await this.runMigrations();
+    this.runMigrations();
   }
 
-  async insertDefaultData() {
+  insertDefaultData() {
     const defaultCategories = [
       { id: uuidv4(), name: 'Electronics', description: 'Electronic devices and components' },
       { id: uuidv4(), name: 'Clothing', description: 'Apparel and accessories' },
@@ -103,48 +99,47 @@ class Database {
     ];
 
     for (const category of defaultCategories) {
-      await this.run(
+      this.run(
         'INSERT OR IGNORE INTO categories (id, name, description) VALUES (?, ?, ?)',
         [category.id, category.name, category.description]
       );
     }
   }
 
-  async runMigrations() {
+  runMigrations() {
     try {
       // Check if ico column exists in suppliers table
-      const icoExists = await this.get("PRAGMA table_info(suppliers)");
-      const columns = await this.all("PRAGMA table_info(suppliers)");
+      const columns = this.all("PRAGMA table_info(suppliers)");
       const hasIco = columns.some(col => col.name === 'ico');
       const hasDic = columns.some(col => col.name === 'dic');
 
       if (!hasIco) {
-        await this.run('ALTER TABLE suppliers ADD COLUMN ico TEXT');
+        this.run('ALTER TABLE suppliers ADD COLUMN ico TEXT');
       }
       if (!hasDic) {
-        await this.run('ALTER TABLE suppliers ADD COLUMN dic TEXT');
+        this.run('ALTER TABLE suppliers ADD COLUMN dic TEXT');
       }
       
       // Check if VAT columns exist in products table
-      const productColumns = await this.all("PRAGMA table_info(products)");
+      const productColumns = this.all("PRAGMA table_info(products)");
       const hasCostWithVat = productColumns.some(col => col.name === 'cost_with_vat');
       const hasVatRate = productColumns.some(col => col.name === 'vat_rate');
 
       if (!hasCostWithVat) {
-        await this.run('ALTER TABLE products ADD COLUMN cost_with_vat REAL DEFAULT 0');
+        this.run('ALTER TABLE products ADD COLUMN cost_with_vat REAL DEFAULT 0');
       }
       if (!hasVatRate) {
-        await this.run('ALTER TABLE products ADD COLUMN vat_rate REAL DEFAULT 23');
+        this.run('ALTER TABLE products ADD COLUMN vat_rate REAL DEFAULT 23');
       }
       
       // Check if price_with_vat column exists
       const hasPriceWithVat = productColumns.some(col => col.name === 'price_with_vat');
       if (!hasPriceWithVat) {
-        await this.run('ALTER TABLE products ADD COLUMN price_with_vat REAL DEFAULT 0');
+        this.run('ALTER TABLE products ADD COLUMN price_with_vat REAL DEFAULT 0');
       }
       
       // Check if stock_movements new columns exist
-      const stockMovementsColumns = await this.all("PRAGMA table_info(stock_movements)");
+      const stockMovementsColumns = this.all("PRAGMA table_info(stock_movements)");
       console.log('Stock movements columns:', stockMovementsColumns.map(col => col.name));
       
       const hasCostWithoutVat = stockMovementsColumns.some(col => col.name === 'cost_without_vat');
@@ -161,19 +156,19 @@ class Database {
 
       if (!hasCostWithoutVat) {
         console.log('Adding cost_without_vat column...');
-        await this.run('ALTER TABLE stock_movements ADD COLUMN cost_without_vat REAL DEFAULT 0');
+        this.run('ALTER TABLE stock_movements ADD COLUMN cost_without_vat REAL DEFAULT 0');
       }
       if (!hasVatAmount) {
         console.log('Adding vat_amount column...');
-        await this.run('ALTER TABLE stock_movements ADD COLUMN vat_amount REAL DEFAULT 0');
+        this.run('ALTER TABLE stock_movements ADD COLUMN vat_amount REAL DEFAULT 0');
       }
       if (!hasSupplierId) {
         console.log('Adding supplier_id column...');
-        await this.run('ALTER TABLE stock_movements ADD COLUMN supplier_id TEXT');
+        this.run('ALTER TABLE stock_movements ADD COLUMN supplier_id TEXT');
       }
       if (!hasMovementDate) {
         console.log('Adding movement_date column...');
-        await this.run('ALTER TABLE stock_movements ADD COLUMN movement_date DATETIME');
+        this.run('ALTER TABLE stock_movements ADD COLUMN movement_date DATETIME');
       }
     } catch (error) {
       console.error('Migration error:', error);
@@ -181,43 +176,19 @@ class Database {
   }
 
   run(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.run(sql, params, function(err) {
-        if (err) {
-          reject(err);
-        } else {
-          resolve({ id: this.lastID, changes: this.changes });
-        }
-      });
-    });
+    return this.db.prepare(sql).run(params);
   }
 
   get(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.get(sql, params, (err, row) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(row);
-        }
-      });
-    });
+    return this.db.prepare(sql).get(params);
   }
 
   all(sql, params = []) {
-    return new Promise((resolve, reject) => {
-      this.db.all(sql, params, (err, rows) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows);
-        }
-      });
-    });
+    return this.db.prepare(sql).all(params);
   }
 
   // Product operations
-  async getProducts() {
+  getProducts() {
     const sql = `
       SELECT p.*, c.name as category_name, s.name as supplier_name
       FROM products p
@@ -225,23 +196,23 @@ class Database {
       LEFT JOIN suppliers s ON p.supplier_id = s.id
       ORDER BY p.name
     `;
-    return await this.all(sql);
+    return this.all(sql);
   }
 
-  async addProduct(product) {
+  addProduct(product) {
     const id = uuidv4();
     const sql = `
       INSERT INTO products (id, name, sku, plu, description, category_id, supplier_id, price, price_with_vat, cost, cost_with_vat, vat_rate, quantity, unit)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    await this.run(sql, [
+    this.run(sql, [
       id, product.name, product.sku, product.plu, product.description, product.category_id,
       product.supplier_id, product.price, product.price_with_vat || 0, product.cost, product.cost_with_vat || 0, product.vat_rate || 23, product.quantity, product.unit
     ]);
     return id;
   }
 
-  async checkEanAvailability(ean, excludeId = null) {
+  checkEanAvailability(ean, excludeId = null) {
     let query = 'SELECT COUNT(*) as count FROM products WHERE sku = ?';
     let params = [ean];
     
@@ -250,45 +221,45 @@ class Database {
       params.push(excludeId);
     }
     
-    const result = await this.get(query, params);
+    const result = this.get(query, params);
     return result.count === 0;
   }
 
-  async updateProduct(product) {
+  updateProduct(product) {
     const sql = `
       UPDATE products 
       SET name = ?, sku = ?, plu = ?, description = ?, category_id = ?, supplier_id = ?, 
           price = ?, price_with_vat = ?, cost = ?, cost_with_vat = ?, vat_rate = ?, quantity = ?, unit = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `;
-    await this.run(sql, [
+    this.run(sql, [
       product.name, product.sku, product.plu, product.description, product.category_id,
       product.supplier_id, product.price, product.price_with_vat || 0, product.cost, product.cost_with_vat || 0, product.vat_rate || 23, product.quantity, product.unit, product.id
     ]);
     return product.id;
   }
 
-  async deleteProduct(id) {
-    await this.run('DELETE FROM stock_movements WHERE product_id = ?', [id]);
-    await this.run('DELETE FROM products WHERE id = ?', [id]);
+  deleteProduct(id) {
+    this.run('DELETE FROM stock_movements WHERE product_id = ?', [id]);
+    this.run('DELETE FROM products WHERE id = ?', [id]);
     return id;
   }
 
   // Category operations
-  async getCategories() {
-    return await this.all('SELECT * FROM categories ORDER BY name');
+  getCategories() {
+    return this.all('SELECT * FROM categories ORDER BY name');
   }
 
-  async addCategory(category) {
+  addCategory(category) {
     const id = uuidv4();
-    await this.run('INSERT INTO categories (id, name, description) VALUES (?, ?, ?)', 
+    this.run('INSERT INTO categories (id, name, description) VALUES (?, ?, ?)', 
       [id, category.name, category.description]);
     return id;
   }
 
-  async updateCategory(category) {
+  updateCategory(category) {
     try {
-      await this.run('UPDATE categories SET name = ?, description = ? WHERE id = ?', 
+      this.run('UPDATE categories SET name = ?, description = ? WHERE id = ?', 
         [category.name, category.description, category.id]);
       return { success: true };
     } catch (error) {
@@ -298,39 +269,39 @@ class Database {
   }
 
   // Supplier operations
-  async getSuppliers() {
-    return await this.all('SELECT * FROM suppliers ORDER BY name');
+  getSuppliers() {
+    return this.all('SELECT * FROM suppliers ORDER BY name');
   }
 
-  async addSupplier(supplier) {
+  addSupplier(supplier) {
     const id = uuidv4();
-    await this.run('INSERT INTO suppliers (id, name, email, phone, address, ico, dic) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+    this.run('INSERT INTO suppliers (id, name, email, phone, address, ico, dic) VALUES (?, ?, ?, ?, ?, ?, ?)', 
       [id, supplier.name, supplier.email, supplier.phone, supplier.address, supplier.ico, supplier.dic]);
     return id;
   }
 
-  async getSupplier(id) {
-    return await this.get('SELECT * FROM suppliers WHERE id = ?', [id]);
+  getSupplier(id) {
+    return this.get('SELECT * FROM suppliers WHERE id = ?', [id]);
   }
 
-  async updateSupplier(supplier) {
-    await this.run('UPDATE suppliers SET name = ?, email = ?, phone = ?, address = ?, ico = ?, dic = ? WHERE id = ?', 
+  updateSupplier(supplier) {
+    this.run('UPDATE suppliers SET name = ?, email = ?, phone = ?, address = ?, ico = ?, dic = ? WHERE id = ?', 
       [supplier.name, supplier.email, supplier.phone, supplier.address, supplier.ico, supplier.dic, supplier.id]);
     return supplier.id;
   }
 
-  async deleteSupplier(id) {
-    await this.run('DELETE FROM suppliers WHERE id = ?', [id]);
+  deleteSupplier(id) {
+    this.run('DELETE FROM suppliers WHERE id = ?', [id]);
     return id;
   }
   
-  async deleteCategory(id) {
+  deleteCategory(id) {
     try {
       // First, set category_id to NULL for all products in this category
-      await this.run('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
+      this.run('UPDATE products SET category_id = NULL WHERE category_id = ?', [id]);
       
       // Then delete the category
-      await this.run('DELETE FROM categories WHERE id = ?', [id]);
+      this.run('DELETE FROM categories WHERE id = ?', [id]);
       return { success: true };
     } catch (error) {
       console.error('Error deleting category:', error);
@@ -339,7 +310,7 @@ class Database {
   }
 
   // Stock operations
-  async updateStock(productId, quantity, type, additionalData = {}) {
+  updateStock(productId, quantity, type, additionalData = {}) {
     const movementId = uuidv4();
     
     // Prepare movement data
@@ -357,7 +328,7 @@ class Database {
     };
     
     // Add stock movement record
-    await this.run(
+    this.run(
       'INSERT INTO stock_movements (id, product_id, quantity, type, reference, notes, cost_without_vat, vat_amount, supplier_id, movement_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [movementData.id, movementData.productId, movementData.quantity, movementData.type, movementData.reference, movementData.notes, movementData.costWithoutVat, movementData.vatAmount, movementData.supplierId, movementData.movementDate]
     );
@@ -372,12 +343,12 @@ class Database {
       sql = 'UPDATE products SET quantity = ? WHERE id = ?';
     }
 
-    await this.run(sql, [quantity, productId]);
+    this.run(sql, [quantity, productId]);
     return movementId;
   }
 
-  async getStockHistory(productId) {
-    return await this.all(
+  getStockHistory(productId) {
+    return this.all(
       `SELECT sm.*, s.name as supplier_name 
        FROM stock_movements sm 
        LEFT JOIN suppliers s ON sm.supplier_id = s.id 
@@ -388,7 +359,7 @@ class Database {
   }
 
   // Search operations
-  async searchProducts(searchTerm) {
+  searchProducts(searchTerm) {
     const sql = `
       SELECT p.*, c.name as category_name, s.name as supplier_name
       FROM products p
@@ -398,20 +369,20 @@ class Database {
       ORDER BY p.name
     `;
     const term = `%${searchTerm}%`;
-    return await this.all(sql, [term, term, term]);
+    return this.all(sql, [term, term, term]);
   }
 
-  async searchSuppliers(searchTerm) {
+  searchSuppliers(searchTerm) {
     const sql = `
       SELECT * FROM suppliers
       WHERE name LIKE ? OR email LIKE ? OR phone LIKE ? OR address LIKE ? OR ico LIKE ? OR dic LIKE ?
       ORDER BY name
     `;
     const term = `%${searchTerm}%`;
-    return await this.all(sql, [term, term, term, term, term, term]);
+    return this.all(sql, [term, term, term, term, term, term]);
   }
 
-  async getLowStockProducts() {
+  getLowStockProducts() {
     const sql = `
       SELECT p.*, c.name as category_name, s.name as supplier_name
       FROM products p
@@ -420,31 +391,31 @@ class Database {
       WHERE p.quantity <= 10
       ORDER BY p.quantity ASC
     `;
-    return await this.all(sql);
+    return this.all(sql);
   }
 
   // Dashboard statistics
-  async getDashboardStats() {
+  getDashboardStats() {
     const stats = {};
     
     // Total products
-    const totalProducts = await this.get('SELECT COUNT(*) as count FROM products');
+    const totalProducts = this.get('SELECT COUNT(*) as count FROM products');
     stats.totalProducts = totalProducts.count;
     
     // Total value
-    const totalValue = await this.get('SELECT SUM(price * quantity) as value FROM products');
+    const totalValue = this.get('SELECT SUM(price * quantity) as value FROM products');
     stats.totalValue = totalValue.value || 0;
     
     // Low stock count
-    const lowStock = await this.get('SELECT COUNT(*) as count FROM products WHERE quantity <= 10');
+    const lowStock = this.get('SELECT COUNT(*) as count FROM products WHERE quantity <= 10');
     stats.lowStockCount = lowStock.count;
     
     // Out of stock count
-    const outOfStock = await this.get('SELECT COUNT(*) as count FROM products WHERE quantity = 0');
+    const outOfStock = this.get('SELECT COUNT(*) as count FROM products WHERE quantity = 0');
     stats.outOfStockCount = outOfStock.count;
     
     // Recent movements
-    const recentMovements = await this.all(`
+    const recentMovements = this.all(`
       SELECT sm.*, p.name as product_name 
       FROM stock_movements sm 
       JOIN products p ON sm.product_id = p.id 
@@ -467,5 +438,5 @@ class Database {
   }
 }
 
-module.exports = Database;
+module.exports = DatabaseManager;
 

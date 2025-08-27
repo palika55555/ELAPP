@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-app",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Desktop inventory management application built with Electron",
   "main": "main.js",
   "scripts": {
@@ -28,8 +28,8 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.2.0",
     "electron-updater": "^6.6.2",
-    "sqlite3": "^5.0.2",
     "uuid": "^9.0.1"
   },
   "build": {
@@ -38,11 +38,11 @@
     "directories": {
       "output": "dist"
     },
-    "files": [
-      "**/*",
-      "!node_modules/**/*",
-      "!dist/**/*"
-    ],
+          "files": [
+        "**/*",
+        "!node_modules/**/*",
+        "!dist/**/*"
+      ],
     "publish": {
       "provider": "github",
       "owner": "palika55555",

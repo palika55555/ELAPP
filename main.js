@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const Database = require('./database/database');
+const DatabaseManager = require('./database/database');
 const UpdateManager = require('./updater');
 
 let mainWindow;
@@ -46,8 +46,8 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   // Initialize database
-  db = new Database();
-  await db.initialize();
+  db = new DatabaseManager();
+  db.initialize();
   
   createWindow();
 
