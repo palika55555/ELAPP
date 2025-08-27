@@ -1,21 +1,51 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const { app } = require('electron');
 const { v4: uuidv4 } = require('uuid');
 
 class DatabaseManager {
   constructor() {
-    this.dbPath = path.join(__dirname, 'inventory.db');
+    // Použijeme user data directory pre databázu
+    const userDataPath = app ? app.getPath('userData') : path.join(process.env.APPDATA || process.env.HOME, 'inventory-management-app');
+    this.dbPath = path.join(userDataPath, 'inventory.db');
     this.db = null;
   }
 
   initialize() {
     try {
+      // Skontrolujeme či existuje stará databáza
+      this.migrateOldDatabase();
+      
       this.db = new Database(this.dbPath);
       this.createTables();
       return true;
     } catch (error) {
       console.error('Database initialization error:', error);
       throw error;
+    }
+  }
+
+  migrateOldDatabase() {
+    try {
+      const fs = require('fs');
+      const oldDbPath = path.join(__dirname, 'inventory.db');
+      
+      // Ak existuje stará databáza a nová neexistuje, skopírujeme ju
+      if (fs.existsSync(oldDbPath) && !fs.existsSync(this.dbPath)) {
+        console.log('Migrating old database...');
+        
+        // Vytvoríme user data directory ak neexistuje
+        const userDataDir = path.dirname(this.dbPath);
+        if (!fs.existsSync(userDataDir)) {
+          fs.mkdirSync(userDataDir, { recursive: true });
+        }
+        
+        // Skopírujeme starú databázu
+        fs.copyFileSync(oldDbPath, this.dbPath);
+        console.log('Database migrated successfully');
+      }
+    } catch (error) {
+      console.error('Migration error:', error);
     }
   }
 
