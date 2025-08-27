@@ -1,6 +1,6 @@
 {
   "name": "inventory-management-app",
-  "version": "1.1.2",
+  "version": "1.1.5",
   "description": "Desktop inventory management application built with Electron",
   "main": "main.js",
   "scripts": {
@@ -48,7 +48,7 @@
       "provider": "github",
       "owner": "palika55555",
       "repo": "ELAPP",
-      "private": true
+      "private": false
     },
     "win": {
       "target": "nsis",
