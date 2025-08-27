@@ -29,7 +29,7 @@
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "electron-updater": "^6.6.2",
-    "sqlite3": "^5.1.7",
+    "sqlite3": "^5.0.2",
     "uuid": "^9.0.1"
   },
   "build": {
